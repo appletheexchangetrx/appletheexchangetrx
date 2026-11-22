@@ -27,7 +27,6 @@ import {
   formatMYR,
   hashPassword,
   isAuthSession,
-  isCheckoutDraft,
   isOrderArray,
   isStoredAccountArray,
   isThemeMode,
@@ -214,6 +213,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const nextProducts = await fetchProducts();
       setProducts(nextProducts);
       const validProductIds = new Set(nextProducts.map((product) => product.id));
+      setNotifications((prev) => prev.map((notification) => {
+        const actionPath = notification.actionPath || '';
+        if (!actionPath.startsWith('/product/')) return notification;
+        const linkedId = decodeURIComponent(actionPath.slice('/product/'.length));
+        return validProductIds.has(linkedId)
+          ? notification
+          : { ...notification, actionPath: '/products', actionLabel: 'Browse Products' };
+      }));
       setProfile((prev) => ({
         ...prev,
         wishlist: prev.wishlist.filter((productId) => validProductIds.has(productId)),
@@ -991,10 +998,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       productsError,
       refreshProducts,
       getProductById,
-      products,
-      productsLoading,
-      productsError,
-      refreshProducts,
       cart,
       cartCount,
       selectedCartItems,
@@ -1045,6 +1048,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setTheme,
       toggleTheme,
       getProductById,
+      products,
+      productsLoading,
+      productsError,
+      refreshProducts,
       cart,
       cartCount,
       selectedCartItems,
