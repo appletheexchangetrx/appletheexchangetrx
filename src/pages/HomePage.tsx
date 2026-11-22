@@ -99,14 +99,14 @@ export const HomePage: React.FC = () => {
         <section aria-label="Flash Sale" className="rounded-2xl bg-[#E84135] p-4 overflow-hidden">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center">
+              <span className="w-8 h-8 rounded-full bg-white/20 !text-white flex items-center justify-center">
                 <Zap className="w-4 h-4 fill-current" />
               </span>
               <div>
-                <h2 className="text-[18px] font-semibold text-white">
+                <h2 className="text-[18px] font-semibold !text-white">
                   Flash Sale
                 </h2>
-                <p className="text-[11px] text-white/80">
+                <p className="text-[11px] !text-white/80">
                   Limited-time offers
                 </p>
               </div>
@@ -114,7 +114,7 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/products?promotion=flash_sale')}
-              className="min-h-[44px] px-1 text-[13px] font-medium text-white/90 hover:text-white inline-flex items-center gap-0.5 whitespace-nowrap"
+              className="min-h-[44px] px-1 text-[13px] font-medium !text-white/90 hover:!text-white inline-flex items-center gap-0.5 whitespace-nowrap"
             >
               <span>See all</span>
               <ChevronRight className="w-4 h-4" />
