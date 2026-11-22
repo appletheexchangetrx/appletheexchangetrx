@@ -78,7 +78,7 @@ interface StoreContextValue {
   clearBuyNow: () => void;
   orders: Order[];
   lastOrderId: string | null;
-  placeOrder: () => { ok: true; order: Order } | { ok: false; error: string };
+  placeOrder: (freshProducts?: Product[]) => { ok: true; order: Order } | { ok: false; error: string };
   cancelOrder: (orderId: string) => void;
   buyAgainOrder: (order: Order) => void;
 
