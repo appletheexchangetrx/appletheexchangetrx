@@ -1,0 +1,6 @@
+{
+  "name": "Apple The Exchange TRX",
+  "description": "Mobile storefront for Apple The Exchange TRX featuring Apple products and accessories in MYR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
