@@ -5,6 +5,7 @@ import {
   CreditCard,
   Lock,
   MapPin,
+  Plus,
   Truck,
 } from 'lucide-react';
 import { StandaloneShell } from '../components/layout/StandaloneShell';
