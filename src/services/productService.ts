@@ -82,10 +82,11 @@ function mapProduct(raw: RawProduct): Product {
     const regularPrice = toNumber(item.price);
     const salePrice = toOptionalNumber(item.sale_price);
     const color = item.color?.trim() || 'Standard';
-    const image = [
+    const images = Array.from(new Set([
       ...imageUrls(item.image_link),
       ...imageUrls(item.additional_image_link),
-    ][0] || '';
+    ]));
+    const image = images[0] || '';
 
     return {
       id: String(item.id ?? ''),
@@ -95,6 +96,7 @@ function mapProduct(raw: RawProduct): Product {
       price: salePrice ?? regularPrice,
       original_price: salePrice !== undefined && salePrice < regularPrice ? regularPrice : undefined,
       image,
+      images,
     };
   }).filter((variant) => variant.id.length > 0);
 
