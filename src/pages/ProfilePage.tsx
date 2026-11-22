@@ -115,7 +115,7 @@ export const ProfilePage: React.FC = () => {
         <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <span className="w-11 h-11 rounded-full bg-[#1D1D1F] dark:bg-[#F5F5F7] text-white dark:text-[#1D1D1F] flex items-center justify-center shrink-0">
-              <AppleLogoMark className="w-5 h-5" />
+              <AppleLogoMark className="w-6 h-6" inverted />
             </span>
             <div>
               <h1 className="text-[18px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7]">

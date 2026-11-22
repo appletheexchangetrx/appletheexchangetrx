@@ -74,7 +74,7 @@ export const LiveChatPage: React.FC = () => {
               <ChevronLeft className="w-6 h-6" strokeWidth={1.8} />
             </button>
             <div className="w-9 h-9 rounded-full bg-[#1D1D1F] dark:bg-[#F5F5F7] text-white dark:text-[#1D1D1F] flex items-center justify-center shrink-0">
-              <AppleLogoMark className="w-4 h-4" />
+              <AppleLogoMark className="w-5 h-5" inverted />
             </div>
             <div className="min-w-0 pl-1">
               <div className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] truncate">
