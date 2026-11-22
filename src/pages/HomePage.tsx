@@ -122,7 +122,7 @@ export const HomePage: React.FC = () => {
           </div>
           <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 -mx-4 px-4">
             {flashSaleProducts.map((product) => (
-              <div key={product.id} className="relative min-w-0 w-[min(66vw,200px)] shrink-0 snap-start">
+              <div key={product.id} className="relative min-w-0 w-[min(60vw,184px)] shrink-0 snap-start">
                 <span className="absolute z-10 top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[#E84135] px-2 py-1 text-[9px] font-bold text-white shadow-sm">
                   <Zap className="w-3 h-3 fill-current" />
                   FLASH SALE
