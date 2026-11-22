@@ -94,7 +94,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
   return (
     <article className="rounded-t-[16px] rounded-b-none overflow-hidden border-0 shadow-none flex flex-col">
       {/* Image Container: 1:1, padding 0, rounded-t-16, rounded-b-0 */}
-      <div className={`relative w-full aspect-square rounded-t-[16px] rounded-b-none overflow-hidden ${isFlashSale ? 'bg-[#2C2C2E]' : 'bg-[#F5F5F7] dark:bg-[#2C2C2E]'}`}>
+      <div className={`relative w-full aspect-square rounded-[16px] overflow-hidden ${isFlashSale ? 'bg-[#2C2C2E]' : 'bg-[#F5F5F7] dark:bg-[#2C2C2E]'}`}>
         <a
           href={`/product/${product.id}`}
           onClick={(e) => {
