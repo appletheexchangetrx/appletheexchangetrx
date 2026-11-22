@@ -129,7 +129,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
       </div>
 
       {/* Content: padding 0, gap 8 */}
-      <div className="flex-1 flex flex-col justify-between gap-[8px]">
+      <div className="flex-1 flex flex-col gap-[2px]">
         <div>
           <a
             href={`/product/${product.id}`}
@@ -137,7 +137,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
               e.preventDefault();
               navigate(`/product/${product.id}`);
             }}
-            className="block text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] line-clamp-2 hover:text-[#0071E3] dark:hover:text-[#2997FF]"
+            className="block text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] truncate hover:text-[#0071E3] dark:hover:text-[#2997FF]"
           >
             {product.name}
           </a>
