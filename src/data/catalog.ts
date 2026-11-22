@@ -135,13 +135,13 @@ export const INITIAL_ORDERS: Order[] = [];
 export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
-    type: 'order',
-    title: 'Order TRX-2026-8412 is Processing',
-    message: 'Your AirPods Pro 3 and MagSafe Charger are being prepared at Apple The Exchange TRX.',
+    type: 'store',
+    title: 'Explore the Apple Catalog',
+    message: 'Browse products currently available at Apple The Exchange TRX.',
     timestamp: '2026-11-19T16:40:00+08:00',
     read: false,
-    actionPath: '/orders/ord-trx-1001',
-    actionLabel: 'Track Order',
+    actionPath: '/products',
+    actionLabel: 'Browse Products',
   },
   {
     id: 'notif-2',
