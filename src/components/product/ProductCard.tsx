@@ -38,9 +38,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
             fallbackTitle={product.name}
             className="w-full h-full object-contain block"
           />
-          {(product.is_new || hasDiscount) && (
+          {hasDiscount && (
             <span className="absolute top-2 left-2 text-[8px] font-semibold px-2 py-0.5 rounded-full bg-white/90 dark:bg-[#1C1C1E]/90 text-[#1D1D1F] dark:text-[#F5F5F7] border border-[#E8E8ED] dark:border-[#38383A]">
-              {hasDiscount ? `-${discountPct}%` : 'New'}
+              {`-${discountPct}%`}
             </span>
           )}
         </a>
@@ -110,9 +110,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
           />
         </a>
 
-        {(product.is_new || hasDiscount) && (
+        {hasDiscount && (
           <span className="pointer-events-none absolute top-2.5 left-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/90 dark:bg-[#1C1C1E]/90 text-[#1D1D1F] dark:text-[#F5F5F7] border border-[#E8E8ED] dark:border-[#38383A]">
-            {hasDiscount ? `Save ${discountPct}%` : 'New'}
+            {`Save ${discountPct}%`}
           </span>
         )}
 
