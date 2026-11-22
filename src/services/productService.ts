@@ -130,6 +130,7 @@ function mapProduct(raw: RawProduct): Product {
 export async function fetchProducts(): Promise<Product[]> {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/get-products`, {
     method: 'GET',
+    cache: 'no-store',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       Accept: 'application/json',
