@@ -25,6 +25,10 @@ interface ProductDetailPageProps {
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId }) => {
   const {
     products,
+    productsLoading,
+    productsError,
+    refreshProducts,
+    cart,
     getProductById,
     goBack,
     navigate,
@@ -82,6 +86,31 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
       .slice(0, 4);
   }, [product, products]);
 
+  if (productsLoading && !product) {
+    return (
+      <StandaloneShell title="Product" backFallback="/products">
+        <p className="p-8 text-center text-[13px] text-[#6E6E73] dark:text-[#A1A1A6]">Loading product...</p>
+      </StandaloneShell>
+    );
+  }
+
+  if (productsError && !product) {
+    return (
+      <StandaloneShell title="Unable to Load Product" backFallback="/products">
+        <div className="p-8 text-center flex flex-col items-center gap-4">
+          <p className="text-[14px] text-[#6E6E73] dark:text-[#A1A1A6]">{productsError}</p>
+          <button
+            type="button"
+            onClick={() => void refreshProducts().catch(() => undefined)}
+            className="h-[48px] px-6 rounded-[12px] bg-[#0071E3] text-white text-[14px] font-semibold"
+          >
+            Retry
+          </button>
+        </div>
+      </StandaloneShell>
+    );
+  }
+
   if (!product || !selectedVariant) {
     return (
       <StandaloneShell title="Product Not Found" backFallback="/products">
@@ -111,7 +140,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
   const discountPct = hasDiscount
     ? Math.round(((originalPrice! - currentPrice) / originalPrice!) * 100)
     : 0;
-  const maxStock = selectedVariant.stock;
+  const quantityInBag = cart
+    .filter((item) => item.productId === product.id)
+    .reduce((sum, item) => sum + item.quantity, 0);
+  const maxStock = Math.max(0, product.stock - quantityInBag);
 
   const handleSelectColor = (color: string) => {
     const matchSameSize = product.variants.find(
@@ -122,7 +154,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
     if (next) {
       setSelectedVariantId(next.id);
       setActiveImageIdx(0);
-      setQuantity((q) => Math.min(q, Math.max(1, next.stock)));
+      setQuantity((q) => Math.min(q, Math.max(1, maxStock)));
     }
   };
 
@@ -130,7 +162,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
     const next = product.variants.find((v) => v.id === variantId);
     if (next) {
       setSelectedVariantId(next.id);
-      setQuantity((q) => Math.min(q, Math.max(1, next.stock)));
+      setQuantity((q) => Math.min(q, Math.max(1, maxStock)));
     }
   };
 
@@ -170,7 +202,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            disabled={!product.is_available}
+            disabled={!product.is_available || maxStock <= 0}
             onClick={() => setVariantSheetMode('cart')}
             className="h-[48px] rounded-[12px] border border-[#0071E3] dark:border-[#2997FF] text-[#0071E3] dark:text-[#2997FF] text-[14px] font-semibold flex items-center justify-center whitespace-nowrap disabled:opacity-40 transition-colors hover:bg-[#0071E3]/5"
           >
@@ -178,7 +210,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
           </button>
           <button
             type="button"
-            disabled={!product.is_available}
+            disabled={!product.is_available || maxStock <= 0}
             onClick={() => setVariantSheetMode('buy')}
             className="h-[48px] rounded-[12px] bg-[#0071E3] hover:bg-[#0077ED] dark:bg-[#2997FF] dark:hover:bg-[#47A7FF] text-white text-[14px] font-semibold flex items-center justify-center whitespace-nowrap disabled:opacity-40 transition-colors"
           >
@@ -230,12 +262,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6]">
               <span>{product.brand}</span>
-              {product.is_new && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="text-[#0071E3] dark:text-[#2997FF] font-semibold">New</span>
-                </>
-              )}
+
             </div>
             <h1 className="text-[22px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] leading-tight mt-1">
               {product.name}
@@ -404,25 +431,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
           <p className="text-[14px] text-[#6E6E73] dark:text-[#A1A1A6] leading-[1.6]">
             {product.description}
           </p>
-        </section>
-
-        {/* Specifications */}
-        <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-4">
-          <h2 className="text-[16px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] mb-3">
-            Tech Specs
-          </h2>
-          <div className="divide-y divide-[#E8E8ED] dark:divide-[#2C2C2E]">
-            {product.specifications.map((spec) => (
-              <div key={spec.label} className="py-2.5 flex flex-col gap-0.5">
-                <span className="text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6]">
-                  {spec.label}
-                </span>
-                <span className="text-[13px] font-medium text-[#1D1D1F] dark:text-[#F5F5F7]">
-                  {spec.value}
-                </span>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* Accordion */}
