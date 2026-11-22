@@ -1,0 +1,42 @@
+name: Validate Storefront
+
+on:
+  push:
+    branches:
+      - integrate/get-products-v1
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Production build
+        run: npm run build
+
+      - name: Verify Supabase product endpoint
+        env:
+          SUPABASE_URL: https://axednjikcambzbkxyqpp.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_Vysddy5_b0uZ3iKgnkDTIw_X5O1pBEd
+        run: |
+          node --input-type=module <<'NODE'
+          const response = await fetch(`${process.env.SUPABASE_URL}/functions/v1/get-products`, {
+            headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, Accept: 'application/json' },
+          });
+          const payload = await response.json();
+          if (!response.ok || payload.success !== true || !Array.isArray(payload.data) || payload.data.length === 0) {
+            throw new Error(`get-products verification failed (HTTP ${response.status})`);
+          }
+          console.log(`Verified get-products: ${payload.data.length} product records`);
+          NODE

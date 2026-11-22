@@ -13,10 +13,10 @@ import { useStore } from '../context/StoreContext';
 import { CATEGORIES } from '../data/catalog';
 import type { CategoryId } from '../types/store';
 
-type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'newest';
+type SortOption = 'price-asc' | 'price-desc' | 'newest';
 
 export const ProductsPage: React.FC = () => {
-  const { products, searchQuery, navigate } = useStore();
+  const { products, productsLoading, productsError, refreshProducts, searchQuery, navigate } = useStore();
 
   const initialCategory = useMemo(() => {
     const params = new URLSearchParams(searchQuery);
@@ -29,13 +29,11 @@ export const ProductsPage: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<'all' | CategoryId>(initialCategory);
   const [query, setQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('featured');
-  const [onlyNew, setOnlyNew] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [onlyDeals, setOnlyDeals] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [visibleLimit, setVisibleLimit] = useState(8);
-  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     setSelectedCategory(initialCategory);
@@ -55,7 +53,6 @@ export const ProductsPage: React.FC = () => {
     const q = query.trim().toLowerCase();
     const list = products.filter((p) => {
       if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
-      if (onlyNew && !p.is_new) return false;
       if (onlyDeals && !(p.original_price && p.original_price > p.price)) return false;
       if (q) {
         const matchName = p.name.toLowerCase().includes(q);
@@ -75,14 +72,17 @@ export const ProductsPage: React.FC = () => {
         sorted.sort((a, b) => b.price - a.price);
         break;
       case 'newest':
-        sorted.sort((a, b) => Number(b.is_new) - Number(a.is_new));
+        sorted.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
         break;
       default:
-        sorted.sort((a, b) => Number(b.is_featured) - Number(a.is_featured));
+        sorted.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     }
     return sorted;
-  }, [products, selectedCategory, onlyNew, onlyDeals, query, sortBy]);
+  }, [products, selectedCategory, onlyDeals, query, sortBy]);
 
+  const availableCategories = CATEGORIES.filter((category) =>
+    products.some((product) => product.category === category.id)
+  );
   const visibleProducts = filteredProducts.slice(0, visibleLimit);
   const hasMore = visibleLimit < filteredProducts.length;
 
@@ -93,13 +93,6 @@ export const ProductsPage: React.FC = () => {
       key: 'category',
       label: catName,
       clear: () => handleSelectCategory('all'),
-    });
-  }
-  if (onlyNew) {
-    activeFilters.push({
-      key: 'new',
-      label: 'New Arrivals',
-      clear: () => setOnlyNew(false),
     });
   }
   if (onlyDeals) {
@@ -120,9 +113,8 @@ export const ProductsPage: React.FC = () => {
   const clearAllFilters = () => {
     handleSelectCategory('all');
     setQuery('');
-    setOnlyNew(false);
     setOnlyDeals(false);
-    setSortBy('featured');
+    setSortBy('newest');
     setVisibleLimit(8);
   };
 
@@ -180,7 +172,7 @@ export const ProductsPage: React.FC = () => {
         >
           All Apple
         </button>
-        {CATEGORIES.map((cat) => {
+        {availableCategories.map((cat) => {
           const active = selectedCategory === cat.id;
           return (
             <button
@@ -210,10 +202,9 @@ export const ProductsPage: React.FC = () => {
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             className="h-[40px] px-3 rounded-[10px] bg-white dark:bg-[#1C1C1E] border border-[#D2D2D7] dark:border-[#38383A] text-[13px] font-medium text-[#1D1D1F] dark:text-[#F5F5F7] focus:outline-none focus:border-[#0071E3]"
           >
-            <option value="featured">Sort: Featured</option>
+            <option value="newest">Sort: Newest First</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="price-desc">Price: High to Low</option>
-            <option value="newest">Newest First</option>
           </select>
 
           <button
@@ -281,20 +272,25 @@ export const ProductsPage: React.FC = () => {
       )}
 
       {/* ErrorState */}
-      {loadError ? (
+      {productsError ? (
         <div className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-8 text-center flex flex-col items-center gap-3">
           <AlertTriangle className="w-8 h-8 text-[#D70015] dark:text-[#FF453A]" />
           <h2 className="text-[16px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
             Unable to load catalog
           </h2>
+          <p className="text-[13px] text-[#6E6E73] dark:text-[#A1A1A6]">{productsError}</p>
           <button
             type="button"
-            onClick={() => setLoadError(false)}
+            onClick={() => void refreshProducts().catch(() => undefined)}
             className="h-[44px] px-5 rounded-[12px] bg-[#0071E3] text-white text-[14px] font-semibold"
           >
             Retry
           </button>
         </div>
+      ) : productsLoading ? (
+        <p className="py-10 text-center text-[13px] text-[#6E6E73] dark:text-[#A1A1A6]">
+          Loading products...
+        </p>
       ) : filteredProducts.length === 0 ? (
         /* EmptyState */
         <div className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-8 text-center flex flex-col items-center gap-3">
@@ -347,23 +343,6 @@ export const ProductsPage: React.FC = () => {
           <label className="flex items-center justify-between p-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] cursor-pointer">
             <div>
               <div className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
-                New Arrivals Only
-              </div>
-              <div className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6]">
-                Latest Apple releases at The Exchange TRX
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={onlyNew}
-              onChange={(e) => setOnlyNew(e.target.checked)}
-              className="w-5 h-5 accent-[#0071E3]"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] cursor-pointer">
-            <div>
-              <div className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
                 Special Savings
               </div>
               <div className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6]">
@@ -382,7 +361,6 @@ export const ProductsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setOnlyNew(false);
                 setOnlyDeals(false);
               }}
               className="h-[48px] rounded-[12px] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]"

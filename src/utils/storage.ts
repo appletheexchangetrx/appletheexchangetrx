@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   CHAT: 'apple_store_chat',
   ACCOUNTS: 'apple_store_accounts',
   AUTH: 'apple_store_auth',
+  CATALOG_MIGRATION: 'apple_store_catalog_migration_v1',
 } as const;
 
 export const FIXED_SHIPPING_FEE = 52;

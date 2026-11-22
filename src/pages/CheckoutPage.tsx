@@ -28,6 +28,7 @@ export const CheckoutPage: React.FC = () => {
     setSelectedAddressId,
     saveAddress,
     placeOrder,
+    refreshProducts,
     navigate,
     showToast,
   } = useStore();
@@ -36,6 +37,7 @@ export const CheckoutPage: React.FC = () => {
   const [addAddressModalOpen, setAddAddressModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Add address form state
   const [label, setLabel] = useState('Home');
@@ -102,7 +104,8 @@ export const CheckoutPage: React.FC = () => {
     setPostcode('');
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    if (isSubmitting) return;
     setValidationError(null);
     if (checkoutItems.length === 0) {
       setValidationError('No items selected for checkout.');
@@ -112,13 +115,24 @@ export const CheckoutPage: React.FC = () => {
       setValidationError('Please add a shipping address before placing your order.');
       return;
     }
-    const result = placeOrder();
-    if (result.ok === false) {
-      setValidationError(result.error);
-      showToast(result.error, 'error');
-      return;
+
+    setIsSubmitting(true);
+    try {
+      const freshProducts = await refreshProducts();
+      const result = placeOrder(freshProducts);
+      if (result.ok === false) {
+        setValidationError(result.error);
+        showToast(result.error, 'error');
+        return;
+      }
+      navigate('/order-success', { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to verify product stock. Please try again.';
+      setValidationError(message);
+      showToast(message, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate('/order-success', { replace: true });
   };
 
   return (
@@ -148,9 +162,10 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="button"
               onClick={handlePlaceOrder}
+              disabled={isSubmitting}
               className="w-full h-[48px] rounded-[12px] bg-[#0071E3] hover:bg-[#0077ED] dark:bg-[#2997FF] dark:hover:bg-[#47A7FF] text-white text-[14px] font-semibold transition-colors"
             >
-              Place Order
+              {isSubmitting ? 'Verifying Stock...' : 'Place Order'}
             </button>
           </div>
         ) : undefined

@@ -26,12 +26,16 @@ const CATEGORY_ICON_MAP: Record<CategoryId, React.ComponentType<{ className?: st
 };
 
 export const HomePage: React.FC = () => {
-  const { products, navigate } = useStore();
+  const { products, productsLoading, productsError, refreshProducts, navigate } = useStore();
   const [heroIndex, setHeroIndex] = useState(0);
 
   const activeSlide = HERO_SLIDES[heroIndex] || HERO_SLIDES[0];
-  const featuredProducts = products.filter((p) => p.is_featured).slice(0, 4);
-  const newArrivals = products.filter((p) => p.is_new);
+  const latestProducts = [...products]
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+    .slice(0, 4);
+  const availableCategories = CATEGORIES.filter((category) =>
+    products.some((product) => product.category === category.id)
+  );
 
   return (
     <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
@@ -103,7 +107,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="flex items-stretch gap-2.5 overflow-x-auto no-scrollbar pb-1">
-          {CATEGORIES.map((category) => {
+          {availableCategories.map((category) => {
             const Icon = CATEGORY_ICON_MAP[category.id];
             return (
               <button
@@ -124,11 +128,11 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* FeaturedProducts */}
-      <section aria-label="Featured Apple Products">
+      {/* Our Products */}
+      <section aria-label="Our Products">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[18px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
-            Featured
+            Our Products
           </h2>
           <button
             type="button"
@@ -140,31 +144,32 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
-
-      {/* NewArrivals */}
-      <section aria-label="New Arrivals">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[18px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
-            New Arrivals
-          </h2>
-          <span className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6]">
-            {newArrivals.length} models
-          </span>
-        </div>
-
-        <div className="flex items-stretch gap-3 overflow-x-auto no-scrollbar pb-1">
-          {newArrivals.map((product) => (
-            <div key={product.id} className="w-[172px] shrink-0">
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
+        {productsError ? (
+          <div className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-6 text-center">
+            <p className="text-[13px] text-[#6E6E73] dark:text-[#A1A1A6]">{productsError}</p>
+            <button
+              type="button"
+              onClick={() => void refreshProducts().catch(() => undefined)}
+              className="mt-3 h-[40px] px-4 rounded-[10px] bg-[#0071E3] text-white text-[13px] font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        ) : productsLoading ? (
+          <p className="py-8 text-center text-[13px] text-[#6E6E73] dark:text-[#A1A1A6]">
+            Loading products...
+          </p>
+        ) : latestProducts.length === 0 ? (
+          <p className="py-8 text-center text-[13px] text-[#6E6E73] dark:text-[#A1A1A6]">
+            No products are available right now.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {latestProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Promotions */}

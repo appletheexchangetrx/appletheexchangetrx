@@ -189,7 +189,7 @@ export const CartPage: React.FC = () => {
                       <button
                         type="button"
                         aria-label={`Increase quantity of ${item.name}`}
-                        disabled={item.quantity >= item.stock}
+                        disabled={cart.filter((cartItem) => cartItem.productId === item.productId).reduce((sum, cartItem) => sum + cartItem.quantity, 0) >= item.stock}
                         onClick={() => updateCartQuantity(item.key, item.quantity + 1)}
                         className="w-[32px] h-[32px] rounded-[8px] border border-[#D2D2D7] dark:border-[#38383A] flex items-center justify-center text-[#1D1D1F] dark:text-[#F5F5F7] disabled:opacity-35"
                       >

@@ -23,31 +23,24 @@ export interface ProductVariant {
   colorHex: string;
   price: number;
   original_price?: number;
-  stock: number;
   image: string;
-}
-
-export interface ProductSpecification {
-  label: string;
-  value: string;
+  images: string[];
 }
 
 export interface Product {
   id: string;
   item_group_id: string;
   name: string;
-  brand: 'Apple';
+  brand: string;
   category: CategoryId;
   description: string;
   price: number;
   original_price?: number;
   images: string[];
   stock: number;
-  specifications: ProductSpecification[];
   variants: ProductVariant[];
-  is_featured: boolean;
-  is_new: boolean;
   is_available: boolean;
+  created_at: string;
 }
 
 export interface CartItem {

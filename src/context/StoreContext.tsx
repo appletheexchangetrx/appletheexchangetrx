@@ -4,7 +4,6 @@ import {
   INITIAL_CHAT_MESSAGES,
   INITIAL_NOTIFICATIONS,
   INITIAL_ORDERS,
-  PRODUCTS,
 } from '../data/catalog';
 import type {
   Address,
@@ -39,6 +38,7 @@ import {
   safeWriteJSON,
   STORAGE_KEYS,
 } from '../utils/storage';
+import { fetchProducts } from '../services/productService';
 
 interface StoreContextValue {
   // Navigation
@@ -54,6 +54,9 @@ interface StoreContextValue {
 
   // Catalog
   products: Product[];
+  productsLoading: boolean;
+  productsError: string | null;
+  refreshProducts: () => Promise<Product[]>;
   getProductById: (id: string) => Product | undefined;
 
   // Cart
@@ -75,7 +78,7 @@ interface StoreContextValue {
   clearBuyNow: () => void;
   orders: Order[];
   lastOrderId: string | null;
-  placeOrder: () => { ok: true; order: Order } | { ok: false; error: string };
+  placeOrder: (freshProducts?: Product[]) => { ok: true; order: Order } | { ok: false; error: string };
   cancelOrder: (orderId: string) => void;
   buyAgainOrder: (order: Order) => void;
 
@@ -138,10 +141,10 @@ function generateSpecialistReply(input: string): string {
     return 'Checkout payment method selection is currently pending store configuration (undecided). You can still review your bag, verify delivery details, and submit an order reservation.';
   }
   if (q.includes('iphone') || q.includes('18 pro')) {
-    return 'iPhone 18 Pro (from RM 5,499.00) and iPhone 18 Pro Max (from RM 5,999.00) are in stock in Black, Silver, Glacier, and Burgundy up to 2TB.';
+    return 'You can browse the current iPhone models, available configurations, and live stock in the Products catalog.';
   }
   if (q.includes('mac') || q.includes('macbook') || q.includes('ipad')) {
-    return 'We carry MacBook Pro 14-inch (M5 Pro), MacBook Air 13-inch (M4), and iPad Pro 13-inch (M5). Tap any device in Products to check variant stock.';
+    return 'Browse the current Mac and iPad catalog to see available models, configurations, and product details.';
   }
   if (q.includes('order') || q.includes('track') || q.includes('cancel')) {
     return 'You can view live tracking steps, copy your order reference, or manage eligible orders anytime from Profile > My Orders.';
@@ -159,9 +162,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     safeReadJSON<ThemeMode>(STORAGE_KEYS.THEME, 'light', isThemeMode)
   );
 
-  const [cart, setCart] = useState<CartItem[]>(() =>
-    safeReadJSON<CartItem[]>(STORAGE_KEYS.CART, [], isCartArray)
-  );
+  // Product catalog migration: legacy cart snapshots are intentionally discarded.
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const migrated = window.localStorage.getItem(STORAGE_KEYS.CATALOG_MIGRATION) === 'complete';
+        if (!migrated) {
+          window.localStorage.removeItem(STORAGE_KEYS.CART);
+          window.localStorage.removeItem(STORAGE_KEYS.CHECKOUT);
+          window.localStorage.setItem(STORAGE_KEYS.CATALOG_MIGRATION, 'complete');
+          return [];
+        }
+      } catch {
+        // Continue with the validated storage read when browser storage is unavailable.
+      }
+    }
+    return safeReadJSON<CartItem[]>(STORAGE_KEYS.CART, [], isCartArray);
+  });
 
   const [profile, setProfile] = useState<UserProfile>(() =>
     safeReadJSON<UserProfile>(STORAGE_KEYS.PROFILE, DEFAULT_PROFILE, isUserProfile)
@@ -208,6 +225,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isSpecialistTyping, setIsSpecialistTyping] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
+  const refreshProducts = useCallback(async (): Promise<Product[]> => {
+    setProductsLoading(true);
+    setProductsError(null);
+    try {
+      const nextProducts = await fetchProducts();
+      setProducts(nextProducts);
+      const validProductIds = new Set(nextProducts.map((product) => product.id));
+      setNotifications((prev) => prev.map((notification) => {
+        const actionPath = notification.actionPath || '';
+        if (!actionPath.startsWith('/product/')) return notification;
+        const linkedId = decodeURIComponent(actionPath.slice('/product/'.length));
+        return validProductIds.has(linkedId)
+          ? notification
+          : { ...notification, actionPath: '/products', actionLabel: 'Browse Products' };
+      }));
+      setProfile((prev) => ({
+        ...prev,
+        wishlist: prev.wishlist.filter((productId) => validProductIds.has(productId)),
+      }));
+      return nextProducts;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load products.';
+      setProductsError(message);
+      throw error;
+    } finally {
+      setProductsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshProducts().catch(() => undefined);
+  }, [refreshProducts]);
 
   // Sync popstate for browser back/forward
   useEffect(() => {
@@ -314,8 +367,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const getProductById = useCallback(
-    (id: string) => PRODUCTS.find((p) => p.id === id),
-    []
+    (id: string) => products.find((product) => product.id === id),
+    [products]
   );
 
   const cartCount = useMemo(
@@ -335,82 +388,73 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addToCart = useCallback(
     (product: Product, variant: ProductVariant, quantity = 1): boolean => {
-      const maxStock = Math.max(0, variant.stock);
-      if (!product.is_available || maxStock <= 0) {
-        showToast('This configuration is currently out of stock.', 'error');
+      const usedStock = cart
+        .filter((item) => item.productId === product.id)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      const remainingStock = Math.max(0, product.stock - usedStock);
+      if (!product.is_available || remainingStock <= 0) {
+        showToast('This product is currently out of stock or its stock is already in your bag.', 'error');
         return false;
       }
 
+      const safeAdd = Math.min(Math.max(1, quantity), remainingStock);
+      const clamped = safeAdd < quantity;
       const key = `${product.id}::${variant.id}`;
-      let clamped = false;
-      let exceeded = false;
+      const existing = cart.find((item) => item.key === key);
+      const newItem: CartItem = {
+        key,
+        productId: product.id,
+        variantId: variant.id,
+        name: product.name,
+        category: product.category,
+        variantSummary: `${variant.color} · ${variant.size}`,
+        price: variant.price,
+        originalPrice: variant.original_price,
+        quantity: (existing?.quantity || 0) + safeAdd,
+        stock: product.stock,
+        image: variant.image || product.images[0] || '',
+        selected: true,
+      };
 
-      setCart((prev) => {
-        const existing = prev.find((i) => i.key === key);
-        if (existing) {
-          const desired = existing.quantity + quantity;
-          if (existing.quantity >= maxStock) {
-            exceeded = true;
-            return prev;
-          }
-          const nextQty = Math.min(maxStock, Math.max(1, desired));
-          if (desired > maxStock) clamped = true;
-          return prev.map((i) =>
-            i.key === key
-              ? { ...i, quantity: nextQty, stock: maxStock, selected: true }
-              : i
-          );
-        }
-        const initialQty = Math.min(maxStock, Math.max(1, quantity));
-        if (quantity > maxStock) clamped = true;
-        const newItem: CartItem = {
-          key,
-          productId: product.id,
-          variantId: variant.id,
-          name: product.name,
-          category: product.category,
-          variantSummary: `${variant.color} · ${variant.size}`,
-          price: variant.price,
-          originalPrice: variant.original_price,
-          quantity: initialQty,
-          stock: maxStock,
-          image: variant.image || product.images[0],
-          selected: true,
-        };
-        return [newItem, ...prev];
-      });
+      setCart((prev) =>
+        existing
+          ? prev.map((item) => item.key === key ? newItem : item)
+          : [newItem, ...prev]
+      );
 
-      if (exceeded) {
-        showToast(`Maximum available stock (${maxStock}) already in bag.`, 'warning');
-        return false;
-      }
-      if (clamped) {
-        showToast(`Added to bag (capped at ${maxStock} available).`, 'warning');
-      } else {
-        showToast(`${product.name} added to bag.`, 'success');
-      }
+      showToast(
+        clamped
+          ? `Added to bag (capped at ${product.stock} total units for this product).`
+          : `${product.name} added to bag.`,
+        clamped ? 'warning' : 'success'
+      );
       return true;
     },
-    [showToast]
+    [cart, showToast]
   );
 
   const updateCartQuantity = useCallback(
     (key: string, quantity: number) => {
+      const current = cart.find((item) => item.key === key);
+      if (!current) return;
+      const otherProductQuantity = cart
+        .filter((item) => item.productId === current.productId && item.key !== key)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      const maxForLine = Math.max(0, current.stock - otherProductQuantity);
+      if (maxForLine < 1) {
+        setCart((prev) => prev.filter((item) => item.key !== key));
+        showToast('This product no longer has available stock for this cart line.', 'warning');
+        return;
+      }
+      const nextQuantity = Math.min(Math.max(1, quantity), maxForLine);
+      if (nextQuantity < quantity) {
+        showToast(`Only ${maxForLine} total units remain for this product.`, 'warning');
+      }
       setCart((prev) =>
-        prev.map((item) => {
-          if (item.key !== key) return item;
-          if (quantity < 1) {
-            return { ...item, quantity: 1 };
-          }
-          if (quantity > item.stock) {
-            showToast(`Only ${item.stock} units in stock for this item.`, 'warning');
-            return { ...item, quantity: item.stock };
-          }
-          return { ...item, quantity };
-        })
+        prev.map((item) => item.key === key ? { ...item, quantity: nextQuantity } : item)
       );
     },
-    [showToast]
+    [cart, showToast]
   );
 
   const toggleCartItemSelect = useCallback((key: string) => {
@@ -438,7 +482,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const buyNow = useCallback(
     (product: Product, variant: ProductVariant, quantity = 1) => {
-      const maxStock = Math.max(0, variant.stock);
+      const maxStock = Math.max(0, product.stock);
       if (!product.is_available || maxStock <= 0) {
         showToast('This configuration is currently out of stock.', 'error');
         return;
@@ -455,7 +499,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         originalPrice: variant.original_price,
         quantity: safeQty,
         stock: maxStock,
-        image: variant.image || product.images[0],
+        image: variant.image || product.images[0] || '',
         selected: true,
       };
       setCheckout((prev) => ({
@@ -478,13 +522,53 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCheckout((prev) => ({ ...prev, buyNowItem: null }));
   }, []);
 
-  const placeOrder = useCallback((): { ok: true; order: Order } | { ok: false; error: string } => {
-    const itemsToOrder = checkout.buyNowItem
+  const placeOrder = useCallback((freshProducts?: Product[]): { ok: true; order: Order } | { ok: false; error: string } => {
+    const sourceItems = checkout.buyNowItem
       ? [checkout.buyNowItem]
       : cart.filter((item) => item.selected);
 
-    if (itemsToOrder.length === 0) {
+    if (sourceItems.length === 0) {
       return { ok: false, error: 'Your checkout selection is empty. Select at least one item.' };
+    }
+
+    const liveCatalog = freshProducts ?? products;
+    const itemsToOrder: CartItem[] = [];
+    for (const item of sourceItems) {
+      const liveProduct = liveCatalog.find((product) => product.id === item.productId);
+      const liveVariant = liveProduct?.variants.find((variant) => variant.id === item.variantId);
+      if (!liveProduct || !liveVariant) {
+        return { ok: false, error: 'A product or variant in your bag is no longer available. Please review your bag.' };
+      }
+      if (!liveProduct.is_available || liveProduct.stock <= 0) {
+        return { ok: false, error: `${liveProduct.name} is currently unavailable.` };
+      }
+      itemsToOrder.push({
+        ...item,
+        name: liveProduct.name,
+        category: liveProduct.category,
+        variantSummary: `${liveVariant.color} · ${liveVariant.size}`,
+        price: liveVariant.price,
+        originalPrice: liveVariant.original_price,
+        stock: liveProduct.stock,
+        image: liveVariant.image || liveProduct.images[0] || '',
+      });
+    }
+
+    const quantitiesByProduct = new Map<string, number>();
+    itemsToOrder.forEach((item) => {
+      quantitiesByProduct.set(
+        item.productId,
+        (quantitiesByProduct.get(item.productId) || 0) + item.quantity
+      );
+    });
+    for (const [productId, quantity] of quantitiesByProduct) {
+      const product = liveCatalog.find((item) => item.id === productId);
+      if (!product || quantity > product.stock) {
+        return {
+          ok: false,
+          error: `${product?.name || 'A product'} has only ${product?.stock ?? 0} units available across all variants. Please update your bag.`,
+        };
+      }
     }
 
     const address =
@@ -596,7 +680,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     showToast(`Order ${orderNumber} placed.`, 'success');
     return { ok: true, order: newOrder };
-  }, [cart, checkout, profile.addresses, showToast]);
+  }, [cart, checkout, profile.addresses, products, showToast]);
 
   const cancelOrder = useCallback(
     (orderId: string) => {
@@ -624,10 +708,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (order: Order) => {
       let addedCount = 0;
       order.items.forEach((orderItem) => {
-        const product = PRODUCTS.find((p) => p.id === orderItem.productId);
+        const product = products.find((p) => p.id === orderItem.productId);
         if (!product) return;
-        const variant =
-          product.variants.find((v) => v.id === orderItem.variantId) || product.variants[0];
+        const variant = product.variants.find((v) => v.id === orderItem.variantId);
         if (!variant) return;
         const ok = addToCart(product, variant, orderItem.quantity);
         if (ok) addedCount += 1;
@@ -636,7 +719,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         navigate('/cart');
       }
     },
-    [addToCart, navigate]
+    [addToCart, navigate, products]
   );
 
   const registerWithPhone = useCallback(
@@ -932,7 +1015,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       theme,
       setTheme,
       toggleTheme,
-      products: PRODUCTS,
+      products,
+      productsLoading,
+      productsError,
+      refreshProducts,
       getProductById,
       cart,
       cartCount,
@@ -984,6 +1070,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setTheme,
       toggleTheme,
       getProductById,
+      products,
+      productsLoading,
+      productsError,
+      refreshProducts,
       cart,
       cartCount,
       selectedCartItems,
