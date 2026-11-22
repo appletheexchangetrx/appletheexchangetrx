@@ -39,6 +39,13 @@ export interface Product {
   images: string[];
   stock: number;
   variants: ProductVariant[];
+  availability?: 'in stock' | 'out of stock' | 'preorder' | 'available for order' | 'discontinued' | string;
+  condition?: 'new' | 'refurbished' | 'used' | string;
+  custom_label_0?: string | null;
+  custom_label_1?: string | null;
+  custom_label_2?: string | null;
+  sale_price_effective_date?: string | null;
+  google_product_category?: string;
   is_available: boolean;
   created_at: string;
 }

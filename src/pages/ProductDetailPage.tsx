@@ -59,7 +59,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
   const galleryImages = useMemo(() => {
     if (!product) return [];
     const set = new Set<string>();
-    selectedVariant?.images.forEach((img) => set.add(img));
+    const source = selectedVariant?.images.length ? selectedVariant.images : product.images;
+    source.forEach((img) => set.add(img));
     return Array.from(set);
   }, [product, selectedVariant]);
 
@@ -261,7 +262,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6]">
               <span>{product.brand}</span>
-
+              {product.custom_label_0 === 'flash_sale' && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-[#D70015] dark:text-[#FF453A] font-semibold">Flash Sale</span>
+                </>
+              )}
+              {product.condition && product.condition !== 'new' && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="capitalize">{product.condition}</span>
+                </>
+              )}
             </div>
             <h1 className="text-[22px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] leading-tight mt-1">
               {product.name}
@@ -305,13 +317,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
             Or from {formatMYR(currentPrice / 12)}/mo for 12 mos · Inclusive of SST
           </p>
           <div className="pt-1 flex items-center gap-2 text-[12px] font-medium">
-            {maxStock > 0 ? (
+            {product.is_available && maxStock > 0 ? (
               <span className="inline-flex items-center gap-1.5 text-[#248A3D] dark:text-[#30D158]">
                 <Check className="w-3.5 h-3.5" />
-                In Stock ({maxStock} units available)
+                {product.availability === 'preorder'
+                  ? `Pre-Order (${maxStock} units available)`
+                  : product.availability === 'available for order'
+                  ? `Available for Order (${maxStock} units)`
+                  : `In Stock (${maxStock} units available)`}
               </span>
             ) : (
-              <span className="text-[#D70015] dark:text-[#FF453A]">Currently Out of Stock</span>
+              <span className="text-[#D70015] dark:text-[#FF453A]">
+                {product.availability === 'discontinued' ? 'Discontinued' : 'Currently Out of Stock'}
+              </span>
             )}
           </div>
         </section>

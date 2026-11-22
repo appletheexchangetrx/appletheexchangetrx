@@ -31,6 +31,7 @@ export const ProductsPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [onlyDeals, setOnlyDeals] = useState(false);
+  const [onlyFlashSale, setOnlyFlashSale] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [visibleLimit, setVisibleLimit] = useState(8);
@@ -53,12 +54,16 @@ export const ProductsPage: React.FC = () => {
     const q = query.trim().toLowerCase();
     const list = products.filter((p) => {
       if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
+      if (onlyFlashSale && p.custom_label_0 !== 'flash_sale') return false;
       if (onlyDeals && !(p.original_price && p.original_price > p.price)) return false;
       if (q) {
         const matchName = p.name.toLowerCase().includes(q);
         const matchDesc = p.description.toLowerCase().includes(q);
         const matchCat = p.category.toLowerCase().includes(q);
-        if (!matchName && !matchDesc && !matchCat) return false;
+        const matchVariant = p.variants.some(
+          (v) => v.color.toLowerCase().includes(q) || v.size.toLowerCase().includes(q)
+        );
+        if (!matchName && !matchDesc && !matchCat && !matchVariant) return false;
       }
       return true;
     });
@@ -78,7 +83,7 @@ export const ProductsPage: React.FC = () => {
         sorted.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     }
     return sorted;
-  }, [products, selectedCategory, onlyDeals, query, sortBy]);
+  }, [products, selectedCategory, onlyFlashSale, onlyDeals, query, sortBy]);
 
   const availableCategories = CATEGORIES.filter((category) =>
     products.some((product) => product.category === category.id)
@@ -93,6 +98,13 @@ export const ProductsPage: React.FC = () => {
       key: 'category',
       label: catName,
       clear: () => handleSelectCategory('all'),
+    });
+  }
+  if (onlyFlashSale) {
+    activeFilters.push({
+      key: 'flash-sale',
+      label: 'Flash Sale',
+      clear: () => setOnlyFlashSale(false),
     });
   }
   if (onlyDeals) {
@@ -113,6 +125,7 @@ export const ProductsPage: React.FC = () => {
   const clearAllFilters = () => {
     handleSelectCategory('all');
     setQuery('');
+    setOnlyFlashSale(false);
     setOnlyDeals(false);
     setSortBy('newest');
     setVisibleLimit(8);
@@ -343,6 +356,23 @@ export const ProductsPage: React.FC = () => {
           <label className="flex items-center justify-between p-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] cursor-pointer">
             <div>
               <div className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
+                Flash Sale
+              </div>
+              <div className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6]">
+                Featured Flash Sale Apple items
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={onlyFlashSale}
+              onChange={(e) => setOnlyFlashSale(e.target.checked)}
+              className="w-5 h-5 accent-[#0071E3]"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] cursor-pointer">
+            <div>
+              <div className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
                 Special Savings
               </div>
               <div className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6]">
@@ -361,6 +391,7 @@ export const ProductsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => {
+                setOnlyFlashSale(false);
                 setOnlyDeals(false);
               }}
               className="h-[48px] rounded-[12px] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]"
