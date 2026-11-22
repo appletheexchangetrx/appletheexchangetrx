@@ -52,7 +52,7 @@ export const HERO_SLIDES: HeroSlide[] = [
     description: 'Explore the latest Apple products available at Apple The Exchange TRX.',
     ctaLabel: 'Explore Products',
     targetPath: '/products',
-    image: IMG_HERO_IPHONE,
+    image: IMG_PROMO_TRX,
   },
   {
     id: 'slide-trx-pavilion',
@@ -88,10 +88,10 @@ export const PROMOTIONS: PromotionItem[] = [
   {
     id: 'promo-mac-studio',
     eyebrow: 'Apple Silicon Lineup',
-    title: 'MacBook Pro & iPad Pro',
-    description: 'Built for creative workflows with Liquid Retina XDR and all-day battery life.',
-    ctaLabel: 'Explore Mac',
-    targetPath: '/products?category=mac',
+    title: 'Explore Apple Products',
+    description: 'Discover Apple devices and accessories available from our store.',
+    ctaLabel: 'Browse Products',
+    targetPath: '/products',
     image: IMG_MACBOOK_PRO,
   },
 ];
