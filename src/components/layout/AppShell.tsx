@@ -24,7 +24,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     { id: 'home', label: 'Home', path: '/', Icon: House },
     { id: 'products', label: 'Products', path: '/products', Icon: LayoutGrid },
     { id: 'livechat', label: 'Live Chat', path: '/livechat', Icon: MessageCircle },
-    { id: 'profile', label: 'Profile', path: '/profile', Icon: UserRound },
   ];
 
   const isNavActive = (path: string) => {
@@ -98,7 +97,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         aria-label="Primary navigation"
         className="flex-none bg-white dark:bg-[#1C1C1E] border-t border-[#E8E8ED] dark:border-[#2C2C2E] safe-area-bottom z-30"
       >
-        <div className="h-[64px] grid grid-cols-4 items-center px-1">
+        <div className="h-[64px] grid grid-cols-3 items-center px-1">
           {navItems.map(({ id, label, path, Icon }) => {
             const active = isNavActive(path);
             return (
