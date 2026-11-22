@@ -90,7 +90,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
   }
 
   return (
-    <article className="rounded-[16px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-[#E8E8ED]/80 dark:border-[#2C2C2E] flex flex-col">
+    <article className="rounded-[16px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col">
       {/* Image Container: 1:1, padding 0, rounded-t-16, rounded-b-0 */}
       <div className="relative w-full aspect-square bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-t-[16px] rounded-b-none overflow-hidden">
         <a
