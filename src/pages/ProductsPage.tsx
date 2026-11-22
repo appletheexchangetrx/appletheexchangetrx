@@ -361,7 +361,6 @@ export const ProductsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setOnlyNew(false);
                 setOnlyDeals(false);
               }}
               className="h-[48px] rounded-[12px] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]"
