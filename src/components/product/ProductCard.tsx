@@ -128,8 +128,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
         </button>
       </div>
 
-      {/* Content: padding 12, gap 8 */}
-      <div className="p-[12px] flex-1 flex flex-col justify-between gap-[8px]">
+      {/* Content: padding 0, gap 8 */}
+      <div className="flex-1 flex flex-col justify-between gap-[8px]">
         <div>
           <a
             href={`/product/${product.id}`}
