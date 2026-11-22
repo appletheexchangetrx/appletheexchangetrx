@@ -343,7 +343,7 @@ export const CheckoutPage: React.FC = () => {
                 >
                   Save Address
                 </button>
-       
+              </form>
               </div>
             )}
           </section>
