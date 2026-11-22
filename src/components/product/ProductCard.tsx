@@ -131,7 +131,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
       </div>
 
       {/* Content: padding 0, gap 8 */}
-      <div className="flex-1 flex flex-col gap-[2px]">
+      <div className="flex-1 flex flex-col gap-[2px] pt-[2px]">
         <div>
           <a
             href={`/product/${product.id}`}
