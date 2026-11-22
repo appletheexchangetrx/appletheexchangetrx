@@ -39,7 +39,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
             className="w-full h-full object-contain block"
           />
           {(product.is_new || hasDiscount) && (
-            <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/90 dark:bg-[#1C1C1E]/90 text-[#1D1D1F] dark:text-[#F5F5F7] border border-[#E8E8ED] dark:border-[#38383A]">
+            <span className="absolute top-2 left-2 text-[8px] font-semibold px-2 py-0.5 rounded-full bg-white/90 dark:bg-[#1C1C1E]/90 text-[#1D1D1F] dark:text-[#F5F5F7] border border-[#E8E8ED] dark:border-[#38383A]">
               {hasDiscount ? `-${discountPct}%` : 'New'}
             </span>
           )}
@@ -54,7 +54,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
                   e.preventDefault();
                   navigate(`/product/${product.id}`);
                 }}
-                className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] line-clamp-2 hover:text-[#0071E3] dark:hover:text-[#2997FF]"
+                className="text-[12px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] line-clamp-2 hover:text-[#0071E3] dark:hover:text-[#2997FF]"
               >
                 {product.name}
               </a>
@@ -69,17 +69,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
                 />
               </button>
             </div>
-            <p className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6] mt-0.5 truncate">
+            <p className="text-[10px] text-[#6E6E73] dark:text-[#A1A1A6] mt-0.5 truncate">
               {defaultVariant ? `${defaultVariant.color} · ${defaultVariant.size}` : product.brand}
             </p>
           </div>
 
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-[15px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
+            <span className="text-[13px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
               {formatMYR(product.price)}
             </span>
             {hasDiscount && (
-              <span className="text-[11px] text-[#86868B] line-through tabular-nums">
+              <span className="text-[9px] text-[#86868B] line-through tabular-nums">
                 {formatMYR(product.original_price!)}
               </span>
             )}
@@ -137,14 +137,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
               e.preventDefault();
               navigate(`/product/${product.id}`);
             }}
-            className="block text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] truncate hover:text-[#0071E3] dark:hover:text-[#2997FF]"
+            className="block text-[12px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] truncate hover:text-[#0071E3] dark:hover:text-[#2997FF]"
           >
             {product.name}
           </a>
         </div>
 
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-[14px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
+          <span className="text-[12px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
             {formatMYR(product.price)}
           </span>
           {hasDiscount && (
