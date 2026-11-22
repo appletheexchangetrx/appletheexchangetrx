@@ -59,8 +59,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ productId 
   const galleryImages = useMemo(() => {
     if (!product) return [];
     const set = new Set<string>();
-    if (selectedVariant?.image) set.add(selectedVariant.image);
-    product.images.forEach((img) => set.add(img));
+    selectedVariant?.images.forEach((img) => set.add(img));
     return Array.from(set);
   }, [product, selectedVariant]);
 
