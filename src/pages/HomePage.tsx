@@ -94,6 +94,44 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* FeaturedCategories */}
+      <section aria-label="Categories">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[18px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
+            Shop by Category
+          </h2>
+          <button
+            type="button"
+            onClick={() => navigate('/products')}
+            className="min-h-[44px] px-1 text-[13px] font-medium text-[#0071E3] dark:text-[#2997FF] inline-flex items-center gap-0.5 whitespace-nowrap"
+          >
+            <span>All</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex items-stretch gap-2.5 overflow-x-auto no-scrollbar pb-1">
+          {availableCategories.map((category) => {
+            const Icon = CATEGORY_ICON_MAP[category.id];
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => navigate(`/products?category=${category.id}`)}
+                className="shrink-0 w-[86px] rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-3 flex flex-col items-center justify-center gap-2 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-[#0071E3] dark:hover:border-[#2997FF] transition-colors"
+              >
+                <span className="w-10 h-10 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F5F5F7] flex items-center justify-center">
+                  <Icon className="w-5 h-5" />
+                </span>
+                <span className="text-[11px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-tight line-clamp-2">
+                  {category.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Flash Sale */}
       {flashSaleProducts.length > 0 && (
         <section aria-label="Flash Sale" className="-mx-4 rounded-none bg-[#E84135] p-4 overflow-hidden">
@@ -133,44 +171,6 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
       )}
-
-      {/* FeaturedCategories */}
-      <section aria-label="Categories">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[18px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
-            Shop by Category
-          </h2>
-          <button
-            type="button"
-            onClick={() => navigate('/products')}
-            className="min-h-[44px] px-1 text-[13px] font-medium text-[#0071E3] dark:text-[#2997FF] inline-flex items-center gap-0.5 whitespace-nowrap"
-          >
-            <span>All</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex items-stretch gap-2.5 overflow-x-auto no-scrollbar pb-1">
-          {availableCategories.map((category) => {
-            const Icon = CATEGORY_ICON_MAP[category.id];
-            return (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => navigate(`/products?category=${category.id}`)}
-                className="shrink-0 w-[86px] rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-3 flex flex-col items-center justify-center gap-2 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-[#0071E3] dark:hover:border-[#2997FF] transition-colors"
-              >
-                <span className="w-10 h-10 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F5F5F7] flex items-center justify-center">
-                  <Icon className="w-5 h-5" />
-                </span>
-                <span className="text-[11px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-tight line-clamp-2">
-                  {category.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
 
       {/* Our Products */}
       <section aria-label="Our Products">
