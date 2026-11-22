@@ -114,7 +114,7 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/products?promotion=flash_sale')}
-              className="min-h-[44px] px-1 text-[13px] font-medium text-[#0071E3] dark:text-[#2997FF] inline-flex items-center gap-0.5 whitespace-nowrap"
+              className="min-h-[44px] px-1 text-[13px] font-medium text-white/90 hover:text-white inline-flex items-center gap-0.5 whitespace-nowrap"
             >
               <span>See all</span>
               <ChevronRight className="w-4 h-4" />
