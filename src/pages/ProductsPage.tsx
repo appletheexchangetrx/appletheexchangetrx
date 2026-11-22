@@ -27,18 +27,24 @@ export const ProductsPage: React.FC = () => {
     return 'all';
   }, [searchQuery]);
 
+  const initialFlashSale = useMemo(
+    () => new URLSearchParams(searchQuery).get('promotion') === 'flash_sale',
+    [searchQuery]
+  );
+
   const [selectedCategory, setSelectedCategory] = useState<'all' | CategoryId>(initialCategory);
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [onlyDeals, setOnlyDeals] = useState(false);
-  const [onlyFlashSale, setOnlyFlashSale] = useState(false);
+  const [onlyFlashSale, setOnlyFlashSale] = useState(initialFlashSale);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [visibleLimit, setVisibleLimit] = useState(8);
 
   useEffect(() => {
     setSelectedCategory(initialCategory);
-  }, [initialCategory]);
+    setOnlyFlashSale(initialFlashSale);
+  }, [initialCategory, initialFlashSale]);
 
   const handleSelectCategory = (cat: 'all' | CategoryId) => {
     setSelectedCategory(cat);
