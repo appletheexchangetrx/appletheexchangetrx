@@ -24,6 +24,7 @@ export interface ProductVariant {
   price: number;
   original_price?: number;
   image: string;
+  images: string[];
 }
 
 export interface Product {
