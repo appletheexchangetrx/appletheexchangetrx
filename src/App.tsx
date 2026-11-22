@@ -4,6 +4,7 @@ import { ToastContainer } from './components/ui/Overlay';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
+import { AddressFormPage } from './pages/AddressFormPage';
 import { HomePage } from './pages/HomePage';
 import { LiveChatPage } from './pages/LiveChatPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -35,6 +36,7 @@ const AppRouter: React.FC = () => {
   }
   if (pathname === '/profile/account') return <AccountPage />;
   if (pathname === '/profile/addresses') return <AddressesPage />;
+  if (pathname === '/profile/addresses/new') return <AddressFormPage />;
   if (pathname === '/profile/payment-methods') return <PaymentMethodsPage />;
 
   // Primary AppShell routes (Home, Products, Profile)
