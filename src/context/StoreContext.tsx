@@ -492,13 +492,53 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCheckout((prev) => ({ ...prev, buyNowItem: null }));
   }, []);
 
-  const placeOrder = useCallback((): { ok: true; order: Order } | { ok: false; error: string } => {
-    const itemsToOrder = checkout.buyNowItem
+  const placeOrder = useCallback((freshProducts?: Product[]): { ok: true; order: Order } | { ok: false; error: string } => {
+    const sourceItems = checkout.buyNowItem
       ? [checkout.buyNowItem]
       : cart.filter((item) => item.selected);
 
-    if (itemsToOrder.length === 0) {
+    if (sourceItems.length === 0) {
       return { ok: false, error: 'Your checkout selection is empty. Select at least one item.' };
+    }
+
+    const liveCatalog = freshProducts ?? products;
+    const itemsToOrder: CartItem[] = [];
+    for (const item of sourceItems) {
+      const liveProduct = liveCatalog.find((product) => product.id === item.productId);
+      const liveVariant = liveProduct?.variants.find((variant) => variant.id === item.variantId);
+      if (!liveProduct || !liveVariant) {
+        return { ok: false, error: 'A product or variant in your bag is no longer available. Please review your bag.' };
+      }
+      if (!liveProduct.is_available || liveProduct.stock <= 0) {
+        return { ok: false, error: `${liveProduct.name} is currently unavailable.` };
+      }
+      itemsToOrder.push({
+        ...item,
+        name: liveProduct.name,
+        category: liveProduct.category,
+        variantSummary: `${liveVariant.color} · ${liveVariant.size}`,
+        price: liveVariant.price,
+        originalPrice: liveVariant.original_price,
+        stock: liveProduct.stock,
+        image: liveVariant.image || liveProduct.images[0] || '',
+      });
+    }
+
+    const quantitiesByProduct = new Map<string, number>();
+    itemsToOrder.forEach((item) => {
+      quantitiesByProduct.set(
+        item.productId,
+        (quantitiesByProduct.get(item.productId) || 0) + item.quantity
+      );
+    });
+    for (const [productId, quantity] of quantitiesByProduct) {
+      const product = liveCatalog.find((item) => item.id === productId);
+      if (!product || quantity > product.stock) {
+        return {
+          ok: false,
+          error: `${product?.name || 'A product'} has only ${product?.stock ?? 0} units available across all variants. Please update your bag.`,
+        };
+      }
     }
 
     const address =
@@ -610,7 +650,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     showToast(`Order ${orderNumber} placed.`, 'success');
     return { ok: true, order: newOrder };
-  }, [cart, checkout, profile.addresses, showToast]);
+  }, [cart, checkout, profile.addresses, products, showToast]);
 
   const cancelOrder = useCallback(
     (orderId: string) => {
@@ -638,7 +678,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (order: Order) => {
       let addedCount = 0;
       order.items.forEach((orderItem) => {
-        const product = PRODUCTS.find((p) => p.id === orderItem.productId);
+        const product = products.find((p) => p.id === orderItem.productId);
         if (!product) return;
         const variant =
           product.variants.find((v) => v.id === orderItem.variantId) || product.variants[0];
@@ -650,7 +690,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         navigate('/cart');
       }
     },
-    [addToCart, navigate]
+    [addToCart, navigate, products]
   );
 
   const registerWithPhone = useCallback(
@@ -946,8 +986,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       theme,
       setTheme,
       toggleTheme,
-      products: PRODUCTS,
+      products,
+      productsLoading,
+      productsError,
+      refreshProducts,
       getProductById,
+      products,
+      productsLoading,
+      productsError,
+      refreshProducts,
       cart,
       cartCount,
       selectedCartItems,
