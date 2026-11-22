@@ -127,7 +127,7 @@ export const HomePage: React.FC = () => {
                   <Zap className="w-3 h-3 fill-current" />
                   FLASH SALE
                 </span>
-                <ProductCard product={product} />
+                <ProductCard product={product} variant="flash-sale" />
               </div>
             ))}
           </div>
