@@ -84,6 +84,7 @@ interface StoreContextValue {
 
   // Auth & Profile & Addresses & Wishlist
   isAuthenticated: boolean;
+  checkPhoneExists: (phone: string) => boolean;
   registerWithPhone: (params: {
     name: string;
     phone: string;
@@ -722,6 +723,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [addToCart, navigate, products]
   );
 
+  const checkPhoneExists = useCallback(
+    (phone: string): boolean => {
+      const normalized = normalizePhone(phone.trim());
+      return normalized.length >= 9 && accounts.some((account) => account.normalizedPhone === normalized);
+    },
+    [accounts]
+  );
+
   const registerWithPhone = useCallback(
     async ({
       name,
@@ -1040,6 +1049,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       cancelOrder,
       buyAgainOrder,
       isAuthenticated: authSession.isAuthenticated,
+      checkPhoneExists,
       registerWithPhone,
       loginWithPhone,
       logoutAccount,
@@ -1094,6 +1104,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       cancelOrder,
       buyAgainOrder,
       authSession.isAuthenticated,
+      checkPhoneExists,
       registerWithPhone,
       loginWithPhone,
       logoutAccount,
