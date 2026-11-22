@@ -4,7 +4,6 @@ import {
   INITIAL_CHAT_MESSAGES,
   INITIAL_NOTIFICATIONS,
   INITIAL_ORDERS,
-  PRODUCTS,
 } from '../data/catalog';
 import type {
   Address,
@@ -28,7 +27,6 @@ import {
   formatMYR,
   hashPassword,
   isAuthSession,
-  isCartArray,
   isCheckoutDraft,
   isOrderArray,
   isStoredAccountArray,
@@ -39,6 +37,7 @@ import {
   safeWriteJSON,
   STORAGE_KEYS,
 } from '../utils/storage';
+import { fetchProducts } from '../services/productService';
 
 interface StoreContextValue {
   // Navigation
@@ -54,6 +53,9 @@ interface StoreContextValue {
 
   // Catalog
   products: Product[];
+  productsLoading: boolean;
+  productsError: string | null;
+  refreshProducts: () => Promise<Product[]>;
   getProductById: (id: string) => Product | undefined;
 
   // Cart
@@ -159,27 +161,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     safeReadJSON<ThemeMode>(STORAGE_KEYS.THEME, 'light', isThemeMode)
   );
 
-  const [cart, setCart] = useState<CartItem[]>(() =>
-    safeReadJSON<CartItem[]>(STORAGE_KEYS.CART, [], isCartArray)
-  );
+  // Product catalog migration: legacy cart snapshots are intentionally discarded.
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   const [profile, setProfile] = useState<UserProfile>(() =>
     safeReadJSON<UserProfile>(STORAGE_KEYS.PROFILE, DEFAULT_PROFILE, isUserProfile)
   );
 
-  const [checkout, setCheckout] = useState<CheckoutDraft>(() =>
-    safeReadJSON<CheckoutDraft>(
-      STORAGE_KEYS.CHECKOUT,
-      {
-        selectedAddressId: DEFAULT_PROFILE.addresses[0]?.id ?? null,
-        shippingMethod: 'standard',
-        shippingFee: FIXED_SHIPPING_FEE,
-        paymentStatus: 'undecided',
-        buyNowItem: null,
-      },
-      isCheckoutDraft
-    )
-  );
+  const [checkout, setCheckout] = useState<CheckoutDraft>(() => ({
+    selectedAddressId: DEFAULT_PROFILE.addresses[0]?.id ?? null,
+    shippingMethod: 'standard',
+    shippingFee: FIXED_SHIPPING_FEE,
+    paymentStatus: 'undecided',
+    buyNowItem: null,
+  }));
 
   const [orders, setOrders] = useState<Order[]>(() =>
     safeReadJSON<Order[]>(STORAGE_KEYS.ORDERS, INITIAL_ORDERS, isOrderArray)
@@ -208,6 +203,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isSpecialistTyping, setIsSpecialistTyping] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
+  const refreshProducts = useCallback(async (): Promise<Product[]> => {
+    setProductsLoading(true);
+    setProductsError(null);
+    try {
+      const nextProducts = await fetchProducts();
+      setProducts(nextProducts);
+      const validProductIds = new Set(nextProducts.map((product) => product.id));
+      setProfile((prev) => ({
+        ...prev,
+        wishlist: prev.wishlist.filter((productId) => validProductIds.has(productId)),
+      }));
+      return nextProducts;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load products.';
+      setProductsError(message);
+      throw error;
+    } finally {
+      setProductsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshProducts().catch(() => undefined);
+  }, [refreshProducts]);
 
   // Sync popstate for browser back/forward
   useEffect(() => {
@@ -314,8 +337,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const getProductById = useCallback(
-    (id: string) => PRODUCTS.find((p) => p.id === id),
-    []
+    (id: string) => products.find((product) => product.id === id),
+    [products]
   );
 
   const cartCount = useMemo(
