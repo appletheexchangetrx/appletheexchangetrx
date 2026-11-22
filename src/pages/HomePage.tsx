@@ -16,15 +16,6 @@ import { useStore } from '../context/StoreContext';
 import { CATEGORIES, HERO_SLIDES, PROMOTIONS } from '../data/catalog';
 import type { CategoryId } from '../types/store';
 
-function isFlashSaleActive(effectiveDate: string | null | undefined): boolean {
-  if (!effectiveDate) return false;
-  const [startText, endText] = effectiveDate.split('/');
-  const start = Date.parse(startText);
-  const end = Date.parse(endText);
-  const now = Date.now();
-  return Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end;
-}
-
 const CATEGORY_ICON_MAP: Record<CategoryId, React.ComponentType<{ className?: string }>> = {
   iphone: Smartphone,
   mac: Laptop,
@@ -41,12 +32,7 @@ export const HomePage: React.FC = () => {
 
   const activeSlide = HERO_SLIDES[heroIndex] || HERO_SLIDES[0];
   const flashSaleProducts = products
-    .filter((product) =>
-      product.custom_label_0?.trim().toLowerCase() === 'flash_sale' &&
-      product.original_price !== undefined &&
-      product.original_price > product.price &&
-      isFlashSaleActive(product.sale_price_effective_date)
-    )
+    .filter((product) => product.custom_label_0?.trim().toLowerCase() === 'flash_sale')
     .slice(0, 4);
   const latestProducts = [...products]
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
