@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
 import { Check, CreditCard, MapPin, Plus, Trash2 } from 'lucide-react';
 import { StandaloneShell } from '../components/layout/StandaloneShell';
-import { PhoneInput } from '../components/ui/PhoneInput';
 import { useStore } from '../context/StoreContext';
-import { formatMalaysiaPhone, stripMalaysiaPhonePrefix } from '../utils/storage';
 
 export const AccountPage: React.FC = () => {
   const { isAuthenticated, profile, updateProfileInfo, navigate, showToast } = useStore();
   const [name, setName] = useState(profile.name);
-  const [email, setEmail] = useState(profile.email);
-  const [phone, setPhone] = useState(() => stripMalaysiaPhonePrefix(profile.phone));
 
   if (!isAuthenticated) {
     return (
@@ -33,18 +29,13 @@ export const AccountPage: React.FC = () => {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanedDigits = stripMalaysiaPhonePrefix(phone).replace(/\D/g, '');
-    if (!name.trim() || cleanedDigits.length < 7) {
+    if (!name.trim()) {
       showToast('Full name and a valid phone number are required.', 'error');
       return;
     }
-    updateProfileInfo({
-      name: name.trim(),
-      email: email.trim(),
-      phone: formatMalaysiaPhone(phone),
-    });
+    await updateProfileInfo({ name: name.trim() });
   };
 
   return (
@@ -67,25 +58,10 @@ export const AccountPage: React.FC = () => {
             <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
               Phone Number
             </label>
-            <PhoneInput
-              value={phone}
-              onChange={setPhone}
-              showIcon
-              placeholder="12-345 6789"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-              Email Address (Optional)
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-              className="w-full h-[48px] px-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-            />
+            <div className="w-full h-[48px] px-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#6E6E73] dark:text-[#A1A1A6] flex items-center">
+              {profile.phone}
+            </div>
+            <p className="mt-1 text-[11px] text-[#86868B]">Phone number is your account ID and cannot be changed here.</p>
           </div>
         </div>
 

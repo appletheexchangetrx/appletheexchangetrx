@@ -3,7 +3,6 @@ import type {
   CartItem,
   CheckoutDraft,
   Order,
-  StoredAccount,
   ThemeMode,
   UserProfile,
 } from '../types/store';
@@ -182,24 +181,12 @@ export function isThemeMode(val: unknown): val is ThemeMode {
   return val === 'light' || val === 'dark';
 }
 
-export function isStoredAccountArray(val: unknown): val is StoredAccount[] {
-  if (!Array.isArray(val)) return false;
-  return val.every(
-    (acc) =>
-      typeof acc === 'object' &&
-      acc !== null &&
-      typeof (acc as StoredAccount).id === 'string' &&
-      typeof (acc as StoredAccount).phone === 'string' &&
-      typeof (acc as StoredAccount).normalizedPhone === 'string' &&
-      typeof (acc as StoredAccount).passwordHash === 'string'
-  );
-}
-
 export function isAuthSession(val: unknown): val is AuthSession {
   if (typeof val !== 'object' || val === null) return false;
-  const s = val as AuthSession;
+  const session = val as AuthSession;
   return (
-    typeof s.isAuthenticated === 'boolean' &&
-    (s.accountId === null || typeof s.accountId === 'string')
+    typeof session.isAuthenticated === 'boolean' &&
+    (session.phone === null || typeof session.phone === 'string') &&
+    (session.password === null || typeof session.password === 'string')
   );
 }

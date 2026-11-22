@@ -23,7 +23,7 @@ export const AddressFormPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSaving) return;
     const phoneDigits = stripMalaysiaPhonePrefix(phone).replace(/\D/g, '');
@@ -33,12 +33,18 @@ export const AddressFormPage: React.FC = () => {
       return;
     }
     setIsSaving(true);
-    saveAddress({
-      label: label.trim(), recipientName: recipientName.trim(), phone: formatMalaysiaPhone(phone),
-      line1: line1.trim(), line2: line2.trim() || undefined, city: city.trim(), state: stateName.trim(),
-      postcode: postcode.trim(), isDefault: isDefault || profile.addresses.length === 0,
-    });
-    navigate(returnTo, { replace: true });
+    try {
+      await saveAddress({
+        label: label.trim(), recipientName: recipientName.trim(), phone: formatMalaysiaPhone(phone),
+        line1: line1.trim(), line2: line2.trim() || undefined, city: city.trim(), state: stateName.trim(),
+        postcode: postcode.trim(), isDefault: isDefault || profile.addresses.length === 0,
+      });
+      navigate(returnTo, { replace: true });
+    } catch {
+      setError('Unable to save this address. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const inputClass = 'w-full h-[48px] px-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7] placeholder:text-[#86868B] focus:outline-none focus:border-[#0071E3] dark:focus:border-[#2997FF]';

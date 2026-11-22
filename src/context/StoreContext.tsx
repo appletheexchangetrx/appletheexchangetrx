@@ -16,7 +16,6 @@ import type {
   OrderStatus,
   Product,
   ProductVariant,
-  StoredAccount,
   ThemeMode,
   ToastItem,
   UserProfile,
@@ -25,12 +24,10 @@ import {
   FIXED_SHIPPING_FEE,
   formatMalaysiaPhone,
   formatMYR,
-  hashPassword,
   isAuthSession,
   isCartArray,
   isCheckoutDraft,
   isOrderArray,
-  isStoredAccountArray,
   isThemeMode,
   isUserProfile,
   normalizePhone,
@@ -39,6 +36,8 @@ import {
   STORAGE_KEYS,
 } from '../utils/storage';
 import { fetchProducts } from '../services/productService';
+import { checkPhoneExists as checkRegisteredPhone, loginUser, registerUser } from '../services/authService';
+import { getUserByPhone, updateUser, type UserRecord } from '../services/userService';
 
 interface StoreContextValue {
   // Navigation
@@ -84,7 +83,7 @@ interface StoreContextValue {
 
   // Auth & Profile & Addresses & Wishlist
   isAuthenticated: boolean;
-  checkPhoneExists: (phone: string) => boolean;
+  checkPhoneExists: (phone: string) => Promise<boolean>;
   registerWithPhone: (params: {
     name: string;
     phone: string;
@@ -96,11 +95,11 @@ interface StoreContextValue {
   }) => Promise<{ ok: true } | { ok: false; error: string }>;
   logoutAccount: () => void;
   profile: UserProfile;
-  updateProfileInfo: (patch: Partial<Pick<UserProfile, 'name' | 'email' | 'phone'>>) => void;
-  saveAddress: (address: Omit<Address, 'id'> & { id?: string }) => Address;
-  deleteAddress: (id: string) => void;
-  setDefaultAddress: (id: string) => void;
-  toggleWishlist: (productId: string) => void;
+  updateProfileInfo: (patch: Partial<Pick<UserProfile, 'name'>>) => Promise<void>;
+  saveAddress: (address: Omit<Address, 'id'> & { id?: string }) => Promise<Address>;
+  deleteAddress: (id: string) => Promise<void>;
+  setDefaultAddress: (id: string) => Promise<void>;
+  toggleWishlist: (productId: string) => Promise<void>;
   resetSessionData: () => void;
 
   // Notifications
@@ -128,6 +127,17 @@ function computeInitials(name: string): string {
   if (parts.length === 0) return 'AX';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function mapUserProfile(user: UserRecord): UserProfile {
+  return {
+    name: user.full_name,
+    email: '',
+    phone: formatMalaysiaPhone(user.phone),
+    avatarInitials: computeInitials(user.full_name),
+    addresses: Array.isArray(user.user_addresses) ? user.user_addresses : [],
+    wishlist: Array.isArray(user.user_wishlist) ? user.user_wishlist : [],
+  };
 }
 
 function generateSpecialistReply(input: string): string {
@@ -211,14 +221,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     safeReadJSON<ChatMessage[]>(STORAGE_KEYS.CHAT, INITIAL_CHAT_MESSAGES, Array.isArray)
   );
 
-  const [accounts, setAccounts] = useState<StoredAccount[]>(() =>
-    safeReadJSON<StoredAccount[]>(STORAGE_KEYS.ACCOUNTS, [], isStoredAccountArray)
-  );
-
   const [authSession, setAuthSession] = useState<AuthSession>(() =>
     safeReadJSON<AuthSession>(
       STORAGE_KEYS.AUTH,
-      { isAuthenticated: false, accountId: null },
+      { isAuthenticated: false, phone: null, password: null },
       isAuthSession
     )
   );
@@ -312,11 +318,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [chatMessages]);
 
   useEffect(() => {
-    safeWriteJSON(STORAGE_KEYS.ACCOUNTS, accounts);
-  }, [accounts]);
-
-  useEffect(() => {
-    safeWriteJSON(STORAGE_KEYS.AUTH, authSession);
+    if (authSession.isAuthenticated && authSession.phone && authSession.password) {
+      safeWriteJSON(STORAGE_KEYS.AUTH, authSession);
+    } else if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(STORAGE_KEYS.AUTH);
+    }
   }, [authSession]);
 
   const dismissToast = useCallback((id: string) => {
@@ -724,237 +730,208 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const checkPhoneExists = useCallback(
-    (phone: string): boolean => {
+    async (phone: string): Promise<boolean> => {
       const normalized = normalizePhone(phone.trim());
-      return normalized.length >= 9 && accounts.some((account) => account.normalizedPhone === normalized);
+      if (normalized.length < 9) return false;
+      return checkRegisteredPhone(normalized);
     },
-    [accounts]
+    []
   );
 
   const registerWithPhone = useCallback(
-    async ({
-      name,
-      phone,
-      password,
-    }: {
+    async ({ name, phone, password }: {
       name: string;
       phone: string;
       password: string;
     }): Promise<{ ok: true } | { ok: false; error: string }> => {
       const trimmedName = name.trim();
-      const trimmedPhone = phone.trim();
-      const normalized = normalizePhone(trimmedPhone);
+      const normalized = normalizePhone(phone.trim());
 
-      if (!trimmedName) {
-        return { ok: false, error: 'Please enter your full name.' };
+      if (!trimmedName) return { ok: false, error: 'Please enter your full name.' };
+      if (normalized.length < 9) return { ok: false, error: 'Please enter a valid phone number.' };
+      if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
+
+      try {
+        const user = await registerUser({ phone: normalized, fullName: trimmedName, password });
+        setAuthSession({ isAuthenticated: true, phone: normalized, password });
+        setProfile(mapUserProfile(user));
+        showToast(`Welcome, ${user.full_name}.`, 'success');
+        return { ok: true };
+      } catch (error) {
+        const message = error instanceof Error && error.message.toLowerCase().includes('duplicate')
+          ? 'This phone number is already registered. Please sign in instead.'
+          : error instanceof Error ? error.message : 'Unable to create your account.';
+        return { ok: false, error: message };
       }
-      if (normalized.length < 9) {
-        return { ok: false, error: 'Please enter a valid phone number.' };
-      }
-      if (password.length < 6) {
-        return { ok: false, error: 'Password must be at least 6 characters.' };
-      }
-
-      if (accounts.some((a) => a.normalizedPhone === normalized)) {
-        return {
-          ok: false,
-          error: 'This phone number is already registered. Please sign in instead.',
-        };
-      }
-
-      const formattedPhone = formatMalaysiaPhone(trimmedPhone);
-      const passwordHash = await hashPassword(password);
-      const newAccount: StoredAccount = {
-        id: `acc-${Date.now()}`,
-        name: trimmedName,
-        phone: formattedPhone,
-        normalizedPhone: normalized,
-        email: '',
-        passwordHash,
-        createdAt: new Date().toISOString(),
-      };
-
-      setAccounts((prev) => [...prev, newAccount]);
-      setAuthSession({ isAuthenticated: true, accountId: newAccount.id });
-      setProfile((prev) => ({
-        ...prev,
-        name: newAccount.name,
-        phone: newAccount.phone,
-        email: newAccount.email,
-        avatarInitials: computeInitials(newAccount.name),
-      }));
-
-      showToast(`Welcome, ${newAccount.name}.`, 'success');
-      return { ok: true };
     },
-    [accounts, showToast]
+    [showToast]
   );
 
   const loginWithPhone = useCallback(
-    async ({
-      phone,
-      password,
-    }: {
+    async ({ phone, password }: {
       phone: string;
       password: string;
     }): Promise<{ ok: true } | { ok: false; error: string }> => {
       const normalized = normalizePhone(phone.trim());
-      if (normalized.length < 9) {
-        return { ok: false, error: 'Please enter a valid phone number.' };
-      }
-      if (!password) {
-        return { ok: false, error: 'Please enter your password.' };
-      }
+      if (normalized.length < 9) return { ok: false, error: 'Please enter a valid phone number.' };
+      if (!password) return { ok: false, error: 'Please enter your password.' };
 
-      const account = accounts.find((a) => a.normalizedPhone === normalized);
-      if (!account) {
-        return { ok: false, error: 'Phone number not registered. Please register first.' };
+      try {
+        const user = await loginUser(normalized, password);
+        if (!user) return { ok: false, error: 'Incorrect phone number or password.' };
+        setAuthSession({ isAuthenticated: true, phone: normalized, password });
+        setProfile(mapUserProfile(user));
+        showToast(`Signed in as ${user.full_name}.`, 'success');
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
+        };
       }
-
-      const passwordHash = await hashPassword(password);
-      if (account.passwordHash !== passwordHash) {
-        return { ok: false, error: 'Incorrect password. Please try again.' };
-      }
-
-      setAuthSession({ isAuthenticated: true, accountId: account.id });
-      setProfile((prev) => ({
-        ...prev,
-        name: account.name,
-        phone: account.phone,
-        email: account.email,
-        avatarInitials: computeInitials(account.name),
-      }));
-
-      showToast(`Signed in as ${account.name}.`, 'success');
-      return { ok: true };
     },
-    [accounts, showToast]
+    [showToast]
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!authSession.isAuthenticated || !authSession.phone || !authSession.password) return;
+    void getUserByPhone(authSession.phone)
+      .then((user) => {
+        if (cancelled) return;
+        if (!user || !user.is_active || user.password !== authSession.password) {
+          setAuthSession({ isAuthenticated: false, phone: null, password: null });
+          return;
+        }
+        setProfile(mapUserProfile(user));
+      })
+      .catch(() => {
+        if (!cancelled) setAuthSession({ isAuthenticated: false, phone: null, password: null });
+      });
+    return () => { cancelled = true; };
+  }, [authSession.isAuthenticated, authSession.phone, authSession.password]);
+
   const logoutAccount = useCallback(() => {
-    setAuthSession({ isAuthenticated: false, accountId: null });
+    setAuthSession({ isAuthenticated: false, phone: null, password: null });
+    setProfile(DEFAULT_PROFILE);
     showToast('Signed out.', 'info');
   }, [showToast]);
 
   const updateProfileInfo = useCallback(
-    (patch: Partial<Pick<UserProfile, 'name' | 'email' | 'phone'>>) => {
-      const normalizedPatch = {
-        ...patch,
-        ...(patch.phone !== undefined ? { phone: formatMalaysiaPhone(patch.phone) } : {}),
-      };
-      setProfile((prev) => {
-        const nextName = normalizedPatch.name ?? prev.name;
-        return {
-          ...prev,
-          ...normalizedPatch,
-          avatarInitials: computeInitials(nextName),
-        };
-      });
-      if (authSession.accountId) {
-        setAccounts((prev) =>
-          prev.map((acc) => {
-            if (acc.id !== authSession.accountId) return acc;
-            const nextPhone = normalizedPatch.phone ?? acc.phone;
-            return {
-              ...acc,
-              name: normalizedPatch.name ?? acc.name,
-              email: normalizedPatch.email ?? acc.email,
-              phone: nextPhone,
-              normalizedPhone: normalizePhone(nextPhone),
-            };
-          })
-        );
+    async (patch: Partial<Pick<UserProfile, 'name'>>): Promise<void> => {
+      const nextName = patch.name?.trim();
+      if (!nextName || !authSession.phone) return;
+      try {
+        const user = await updateUser(authSession.phone, { full_name: nextName });
+        setProfile(mapUserProfile(user));
+        showToast('Account details updated.', 'success');
+      } catch {
+        showToast('Unable to update account details.', 'error');
       }
-      showToast('Account details updated.', 'success');
     },
-    [authSession.accountId, showToast]
+    [authSession.phone, showToast]
   );
 
   const saveAddress = useCallback(
-    (addressInput: Omit<Address, 'id'> & { id?: string }): Address => {
+    async (addressInput: Omit<Address, 'id'> & { id?: string }): Promise<Address> => {
       const id = addressInput.id || `addr-${Date.now()}`;
       const newAddress: Address = {
         ...addressInput,
         phone: formatMalaysiaPhone(addressInput.phone) || addressInput.phone,
         id,
       };
+      let nextAddresses = addressInput.id
+        ? profile.addresses.map((address) => address.id === id ? newAddress : address)
+        : [...profile.addresses, newAddress];
+      if (newAddress.isDefault || nextAddresses.length === 1) {
+        nextAddresses = nextAddresses.map((address) => ({ ...address, isDefault: address.id === id }));
+      }
 
-      setProfile((prev) => {
-        let nextAddresses: Address[];
-        if (addressInput.id) {
-          nextAddresses = prev.addresses.map((a) => (a.id === id ? newAddress : a));
+      try {
+        if (authSession.phone) {
+          const user = await updateUser(authSession.phone, { user_addresses: nextAddresses });
+          setProfile(mapUserProfile(user));
         } else {
-          nextAddresses = [...prev.addresses, newAddress];
+          setProfile((previous) => ({ ...previous, addresses: nextAddresses }));
         }
-        if (newAddress.isDefault || nextAddresses.length === 1) {
-          nextAddresses = nextAddresses.map((a) => ({
-            ...a,
-            isDefault: a.id === id,
-          }));
-        }
-        return { ...prev, addresses: nextAddresses };
-      });
-
-      setCheckout((prev) => ({
-        ...prev,
-        selectedAddressId: id,
-      }));
-      showToast('Shipping address saved.', 'success');
-      return newAddress;
+        setCheckout((previous) => ({ ...previous, selectedAddressId: id }));
+        showToast('Shipping address saved.', 'success');
+        return newAddress;
+      } catch {
+        showToast('Unable to save shipping address.', 'error');
+        throw new Error('Unable to save shipping address.');
+      }
     },
-    [showToast]
+    [authSession.phone, profile.addresses, showToast]
   );
 
   const deleteAddress = useCallback(
-    (id: string) => {
-      setProfile((prev) => {
-        const remaining = prev.addresses.filter((a) => a.id !== id);
-        if (remaining.length > 0 && !remaining.some((a) => a.isDefault)) {
-          remaining[0] = { ...remaining[0], isDefault: true };
+    async (id: string): Promise<void> => {
+      let remaining = profile.addresses.filter((address) => address.id !== id);
+      if (remaining.length > 0 && !remaining.some((address) => address.isDefault)) {
+        remaining = remaining.map((address, index) => index === 0 ? { ...address, isDefault: true } : address);
+      }
+      try {
+        if (authSession.phone) {
+          const user = await updateUser(authSession.phone, { user_addresses: remaining });
+          setProfile(mapUserProfile(user));
+        } else {
+          setProfile((previous) => ({ ...previous, addresses: remaining }));
         }
-        return { ...prev, addresses: remaining };
-      });
-      setCheckout((prev) => ({
-        ...prev,
-        selectedAddressId: prev.selectedAddressId === id ? null : prev.selectedAddressId,
-      }));
-      showToast('Address removed.', 'info');
+        setCheckout((previous) => ({
+          ...previous,
+          selectedAddressId: previous.selectedAddressId === id ? null : previous.selectedAddressId,
+        }));
+        showToast('Address removed.', 'info');
+      } catch {
+        showToast('Unable to remove address.', 'error');
+      }
     },
-    [showToast]
+    [authSession.phone, profile.addresses, showToast]
   );
 
   const setDefaultAddress = useCallback(
-    (id: string) => {
-      setProfile((prev) => ({
-        ...prev,
-        addresses: prev.addresses.map((a) => ({ ...a, isDefault: a.id === id })),
-      }));
-      setCheckout((prev) => ({ ...prev, selectedAddressId: id }));
-      showToast('Default address updated.', 'success');
+    async (id: string): Promise<void> => {
+      const nextAddresses = profile.addresses.map((address) => ({ ...address, isDefault: address.id === id }));
+      try {
+        if (authSession.phone) {
+          const user = await updateUser(authSession.phone, { user_addresses: nextAddresses });
+          setProfile(mapUserProfile(user));
+        } else {
+          setProfile((previous) => ({ ...previous, addresses: nextAddresses }));
+        }
+        setCheckout((previous) => ({ ...previous, selectedAddressId: id }));
+        showToast('Default address updated.', 'success');
+      } catch {
+        showToast('Unable to update default address.', 'error');
+      }
     },
-    [showToast]
+    [authSession.phone, profile.addresses, showToast]
   );
 
   const toggleWishlist = useCallback(
-    (productId: string) => {
-      let added = false;
-      setProfile((prev) => {
-        const exists = prev.wishlist.includes(productId);
-        added = !exists;
-        return {
-          ...prev,
-          wishlist: exists
-            ? prev.wishlist.filter((id) => id !== productId)
-            : [...prev.wishlist, productId],
-        };
-      });
-      showToast(added ? 'Saved to favorites.' : 'Removed from favorites.', 'info');
+    async (productId: string): Promise<void> => {
+      const exists = profile.wishlist.includes(productId);
+      const nextWishlist = exists
+        ? profile.wishlist.filter((id) => id !== productId)
+        : [...profile.wishlist, productId];
+      try {
+        if (authSession.phone) {
+          const user = await updateUser(authSession.phone, { user_wishlist: nextWishlist });
+          setProfile(mapUserProfile(user));
+        } else {
+          setProfile((previous) => ({ ...previous, wishlist: nextWishlist }));
+        }
+        showToast(exists ? 'Removed from favorites.' : 'Saved to favorites.', 'info');
+      } catch {
+        showToast('Unable to update favorites.', 'error');
+      }
     },
-    [showToast]
+    [authSession.phone, profile.wishlist, showToast]
   );
 
   const resetSessionData = useCallback(() => {
-    setAuthSession({ isAuthenticated: false, accountId: null });
+    setAuthSession({ isAuthenticated: false, phone: null, password: null });
     setCart([]);
     setOrders(INITIAL_ORDERS);
     setProfile(DEFAULT_PROFILE);
@@ -1048,7 +1025,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       placeOrder,
       cancelOrder,
       buyAgainOrder,
-      isAuthenticated: authSession.isAuthenticated,
+      isAuthenticated: authSession.isAuthenticated && Boolean(authSession.phone && authSession.password),
       checkPhoneExists,
       registerWithPhone,
       loginWithPhone,

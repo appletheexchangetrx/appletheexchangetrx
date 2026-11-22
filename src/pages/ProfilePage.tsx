@@ -58,17 +58,25 @@ export const ProfilePage: React.FC = () => {
     completed: orders.filter((o) => o.status === 'completed').length,
   };
 
-  const handlePhoneContinue = (e: React.FormEvent) => {
+  const handlePhoneContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     if (phone.replace(/\D/g, '').length < 8) {
       setAuthError('Please enter a valid Malaysian phone number.');
       return;
     }
-    setAuthStage(checkPhoneExists(phone) ? 'login' : 'register');
-    setPassword('');
-    setConfirmPassword('');
-    setShowPassword(false);
+    setSubmitting(true);
+    try {
+      const exists = await checkPhoneExists(phone);
+      setAuthStage(exists ? 'login' : 'register');
+      setPassword('');
+      setConfirmPassword('');
+      setShowPassword(false);
+    } catch {
+      setAuthError('Unable to check this phone number. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleChangeNumber = () => {
@@ -137,7 +145,7 @@ export const ProfilePage: React.FC = () => {
                   <AlertCircle className="w-4 h-4 shrink-0" /><span>{authError}</span>
                 </div>
               )}
-              <button type="submit" className="mt-1 w-full h-[48px] rounded-[12px] bg-[#0071E3] hover:bg-[#0077ED] dark:bg-[#2997FF] dark:hover:bg-[#47A7FF] text-white text-[14px] font-semibold transition-colors">Continue</button>
+              <button type="submit" disabled={submitting} className="mt-1 w-full h-[48px] rounded-[12px] bg-[#0071E3] hover:bg-[#0077ED] dark:bg-[#2997FF] dark:hover:bg-[#47A7FF] text-white text-[14px] font-semibold transition-colors">Continue</button>
             </form>
           ) : (
             <>

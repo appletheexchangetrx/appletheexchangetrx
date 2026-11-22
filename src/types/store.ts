@@ -175,5 +175,6 @@ export interface StoredAccount {
 
 export interface AuthSession {
   isAuthenticated: boolean;
-  accountId: string | null;
+  phone: string | null;
+  password: string | null;
 }
