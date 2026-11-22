@@ -318,7 +318,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [chatMessages]);
 
   useEffect(() => {
-    safeWriteJSON(STORAGE_KEYS.AUTH, authSession);
+    if (authSession.isAuthenticated && authSession.phone && authSession.password) {
+      safeWriteJSON(STORAGE_KEYS.AUTH, authSession);
+    } else if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(STORAGE_KEYS.AUTH);
+    }
   }, [authSession]);
 
   const dismissToast = useCallback((id: string) => {
