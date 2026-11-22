@@ -139,10 +139,10 @@ function generateSpecialistReply(input: string): string {
     return 'Checkout payment method selection is currently pending store configuration (undecided). You can still review your bag, verify delivery details, and submit an order reservation.';
   }
   if (q.includes('iphone') || q.includes('18 pro')) {
-    return 'iPhone 18 Pro (from RM 5,499.00) and iPhone 18 Pro Max (from RM 5,999.00) are in stock in Black, Silver, Glacier, and Burgundy up to 2TB.';
+    return 'You can browse the current iPhone models, available configurations, and live stock in the Products catalog.';
   }
   if (q.includes('mac') || q.includes('macbook') || q.includes('ipad')) {
-    return 'We carry MacBook Pro 14-inch (M5 Pro), MacBook Air 13-inch (M4), and iPad Pro 13-inch (M5). Tap any device in Products to check variant stock.';
+    return 'Browse the current Mac and iPad catalog to see available models, configurations, and product details.';
   }
   if (q.includes('order') || q.includes('track') || q.includes('cancel')) {
     return 'You can view live tracking steps, copy your order reference, or manage eligible orders anytime from Profile > My Orders.';
