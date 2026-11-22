@@ -60,7 +60,7 @@ export const ProductsPage: React.FC = () => {
     const q = query.trim().toLowerCase();
     const list = products.filter((p) => {
       if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
-      if (onlyFlashSale && p.custom_label_0 !== 'flash_sale') return false;
+      if (onlyFlashSale && p.custom_label_0?.trim().toLowerCase() !== 'flash_sale') return false;
       if (onlyDeals && !(p.original_price && p.original_price > p.price)) return false;
       if (q) {
         const matchName = p.name.toLowerCase().includes(q);
