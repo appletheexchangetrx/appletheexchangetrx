@@ -48,7 +48,7 @@ body,
   touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
   background-color: var(--color-desktop-bg);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
