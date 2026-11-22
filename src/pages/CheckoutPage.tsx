@@ -34,7 +34,7 @@ export const CheckoutPage: React.FC = () => {
   } = useStore();
 
   const [addressSheetOpen, setAddressSheetOpen] = useState(false);
-  const [addAddressModalOpen, setAddAddressModalOpen] = useState(false);
+  const [addAddressFormOpen, setAddAddressFormOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +97,7 @@ export const CheckoutPage: React.FC = () => {
       isDefault: profile.addresses.length === 0,
     });
     setFormError(null);
-    setAddAddressModalOpen(false);
+    setAddAddressFormOpen(false);
     setAddressSheetOpen(false);
     setLine1('');
     setLine2('');
@@ -228,12 +228,123 @@ export const CheckoutPage: React.FC = () => {
             ) : (
               <button
                 type="button"
-                onClick={() => setAddAddressModalOpen(true)}
+                onClick={() => setAddAddressFormOpen(true)}
                 className="w-full h-[44px] rounded-[12px] border border-dashed border-[#D2D2D7] dark:border-[#38383A] text-[13px] font-semibold text-[#0071E3] dark:text-[#2997FF] flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Shipping Address</span>
               </button>
+            )}
+
+            {addAddressFormOpen && (
+              <div className="mt-4 pt-4 border-t border-[#E8E8ED] dark:border-[#2C2C2E]">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-[14px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">Add Shipping Address</h3>
+                  <button type="button" onClick={() => setAddAddressFormOpen(false)} className="text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] min-h-[32px] px-1">Cancel</button>
+                </div>
+              <form onSubmit={handleSaveAddress} className="flex flex-col gap-3">
+                {formError && (
+                  <p className="text-[12px] text-[#D70015] dark:text-[#FF453A] font-medium">
+                    {formError}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                      Label
+                    </label>
+                    <input
+                      type="text"
+                      value={label}
+                      onChange={(e) => setLabel(e.target.value)}
+                      placeholder="Home / Office"
+                      className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                      Phone *
+                    </label>
+                    <PhoneInput
+                      value={phone}
+                      onChange={setPhone}
+                      compact
+                      placeholder="12-345 6789"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                    Recipient Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={recipientName}
+                    onChange={(e) => setRecipientName(e.target.value)}
+                    className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                    Street Address *
+                  </label>
+                  <input
+                    type="text"
+                    value={line1}
+                    onChange={(e) => setLine1(e.target.value)}
+                    placeholder="Unit, Building, Street"
+                    className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                      Postcode *
+                    </label>
+                    <input
+                      type="text"
+                      value={postcode}
+                      onChange={(e) => setPostcode(e.target.value)}
+                      placeholder="55188"
+                      className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
+                    className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="mt-2 h-[48px] rounded-[12px] bg-[#0071E3] dark:bg-[#2997FF] text-white text-[14px] font-semibold"
+                >
+                  Save Address
+                </button>
+       
+              </div>
             )}
           </section>
 
@@ -406,7 +517,7 @@ export const CheckoutPage: React.FC = () => {
             type="button"
             onClick={() => {
               setAddressSheetOpen(false);
-              setAddAddressModalOpen(true);
+              setAddAddressFormOpen(true);
             }}
             className="w-full h-[48px] rounded-[12px] border border-[#0071E3] dark:border-[#2997FF] text-[#0071E3] dark:text-[#2997FF] text-[14px] font-semibold flex items-center justify-center gap-1.5"
           >
@@ -415,116 +526,6 @@ export const CheckoutPage: React.FC = () => {
           </button>
         </div>
       </BottomSheet>
-
-      {/* Add Address Modal */}
-      <Modal
-        open={addAddressModalOpen}
-        onClose={() => setAddAddressModalOpen(false)}
-        title="Add Shipping Address"
-      >
-        <form onSubmit={handleSaveAddress} className="flex flex-col gap-3">
-          {formError && (
-            <p className="text-[12px] text-[#D70015] dark:text-[#FF453A] font-medium">
-              {formError}
-            </p>
-          )}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-                Label
-              </label>
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Home / Office"
-                className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-                Phone *
-              </label>
-              <PhoneInput
-                value={phone}
-                onChange={setPhone}
-                compact
-                placeholder="12-345 6789"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-              Recipient Name *
-            </label>
-            <input
-              type="text"
-              value={recipientName}
-              onChange={(e) => setRecipientName(e.target.value)}
-              className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-              Street Address *
-            </label>
-            <input
-              type="text"
-              value={line1}
-              onChange={(e) => setLine1(e.target.value)}
-              placeholder="Unit, Building, Street"
-              className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-                Postcode *
-              </label>
-              <input
-                type="text"
-                value={postcode}
-                onChange={(e) => setPostcode(e.target.value)}
-                placeholder="55188"
-                className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-                City *
-              </label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-              State
-            </label>
-            <input
-              type="text"
-              value={stateName}
-              onChange={(e) => setStateName(e.target.value)}
-              className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="mt-2 h-[48px] rounded-[12px] bg-[#0071E3] dark:bg-[#2997FF] text-white text-[14px] font-semibold"
-          >
-            Save Address
-          </button>
-        </form>
-      </Modal>
 
       {/* Undecided Payment Method Info Modal */}
       <Modal
