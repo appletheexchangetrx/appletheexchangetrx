@@ -8,12 +8,14 @@ import { ResilientImage } from '../ui/ResilientImage';
 interface ProductCardProps {
   product: Product;
   layout?: 'grid' | 'list';
+  variant?: 'default' | 'flash-sale';
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'grid' }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'grid', variant = 'default' }) => {
   const { navigate, profile, toggleWishlist } = useStore();
   const defaultVariant = product.variants[0];
   const isWishlisted = profile.wishlist.includes(product.id);
+  const isFlashSale = variant === 'flash-sale';
 
   const hasDiscount =
     typeof product.original_price === 'number' && product.original_price > product.price;
@@ -90,9 +92,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
   }
 
   return (
-    <article className="rounded-t-[16px] rounded-b-none overflow-hidden border-0 shadow-none flex flex-col">
+    <article className={`rounded-t-[16px] rounded-b-none overflow-hidden border-0 shadow-none flex flex-col ${isFlashSale ? 'bg-[#1C1C1E]' : ''}`}>
       {/* Image Container: 1:1, padding 0, rounded-t-16, rounded-b-0 */}
-      <div className="relative w-full aspect-square bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-t-[16px] rounded-b-none overflow-hidden">
+      <div className={`relative w-full aspect-square rounded-t-[16px] rounded-b-none overflow-hidden ${isFlashSale ? 'bg-[#2C2C2E]' : 'bg-[#F5F5F7] dark:bg-[#2C2C2E]'}`}>
         <a
           href={`/product/${product.id}`}
           onClick={(e) => {
@@ -111,7 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
         </a>
 
         {hasDiscount && (
-          <span className="pointer-events-none absolute top-2.5 left-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/90 dark:bg-[#1C1C1E]/90 text-[#1D1D1F] dark:text-[#F5F5F7] border border-[#E8E8ED] dark:border-[#38383A]">
+          <span className={`pointer-events-none absolute top-2.5 left-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${isFlashSale ? 'bg-[#1C1C1E]/90 text-white border-[#48484A]' : 'bg-white/90 dark:bg-[#1C1C1E]/90 text-[#1D1D1F] dark:text-[#F5F5F7] border-[#E8E8ED] dark:border-[#38383A]'}`}>
             {`Save ${discountPct}%`}
           </span>
         )}
@@ -137,18 +139,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, layout = 'gri
               e.preventDefault();
               navigate(`/product/${product.id}`);
             }}
-            className="block text-[12px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7] leading-[1.35] truncate hover:text-[#0071E3] dark:hover:text-[#2997FF]"
+            className={`block text-[12px] font-semibold leading-[1.35] truncate ${isFlashSale ? 'text-white hover:text-white/80' : 'text-[#1D1D1F] dark:text-[#F5F5F7] hover:text-[#0071E3] dark:hover:text-[#2997FF]'}`}
           >
             {product.name}
           </a>
         </div>
 
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-[12px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
+          <span className={`text-[12px] font-bold tabular-nums ${isFlashSale ? (hasDiscount ? 'text-[#FF6B61]' : 'text-white') : 'text-[#1D1D1F] dark:text-[#F5F5F7]'}`}>
             {formatMYR(product.price)}
           </span>
           {hasDiscount && (
-            <span className="text-[11px] text-[#86868B] line-through tabular-nums">
+            <span className={`text-[11px] line-through tabular-nums ${isFlashSale ? 'text-white/60' : 'text-[#86868B]'}`}>
               {formatMYR(product.original_price!)}
             </span>
           )}
