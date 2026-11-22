@@ -96,7 +96,7 @@ export const HomePage: React.FC = () => {
 
       {/* Flash Sale */}
       {flashSaleProducts.length > 0 && (
-        <section aria-label="Flash Sale" className="rounded-2xl bg-[#E84135] p-4 overflow-hidden">
+        <section aria-label="Flash Sale" className="-mx-4 rounded-none bg-[#E84135] p-4 overflow-hidden">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-white/20 !text-white flex items-center justify-center">
