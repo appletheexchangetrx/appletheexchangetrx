@@ -710,8 +710,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       order.items.forEach((orderItem) => {
         const product = products.find((p) => p.id === orderItem.productId);
         if (!product) return;
-        const variant =
-          product.variants.find((v) => v.id === orderItem.variantId) || product.variants[0];
+        const variant = product.variants.find((v) => v.id === orderItem.variantId);
         if (!variant) return;
         const ok = addToCart(product, variant, orderItem.quantity);
         if (ok) addedCount += 1;
