@@ -96,17 +96,17 @@ export const HomePage: React.FC = () => {
 
       {/* Flash Sale */}
       {flashSaleProducts.length > 0 && (
-        <section aria-label="Flash Sale" className="rounded-2xl bg-[#171719] p-4 overflow-hidden">
+        <section aria-label="Flash Sale" className="rounded-2xl bg-[#E84135] p-4 overflow-hidden">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-[#FFF0E8] dark:bg-[#3A241B] text-[#E85D24] flex items-center justify-center">
+              <span className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center">
                 <Zap className="w-4 h-4 fill-current" />
               </span>
               <div>
                 <h2 className="text-[18px] font-semibold text-white">
                   Flash Sale
                 </h2>
-                <p className="text-[11px] text-white/60">
+                <p className="text-[11px] text-white/80">
                   Limited-time offers
                 </p>
               </div>
@@ -123,7 +123,7 @@ export const HomePage: React.FC = () => {
           <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 -mr-4 pr-4">
             {flashSaleProducts.map((product) => (
               <div key={product.id} className="relative min-w-0 w-[35vw] max-w-[35vw] shrink-0 snap-start">
-                <span className="absolute z-10 top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[#E84135] px-2 py-1 text-[9px] font-bold text-white shadow-sm">
+                <span className="absolute z-10 top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[#C92F28] px-2 py-1 text-[9px] font-bold text-white shadow-sm">
                   <Zap className="w-3 h-3 fill-current" />
                   FLASH SALE
                 </span>
