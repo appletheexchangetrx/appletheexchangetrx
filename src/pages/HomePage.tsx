@@ -8,12 +8,22 @@ import {
   Tablet,
   Tv,
   Watch,
+  Zap,
 } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { ResilientImage } from '../components/ui/ResilientImage';
 import { useStore } from '../context/StoreContext';
 import { CATEGORIES, HERO_SLIDES, PROMOTIONS } from '../data/catalog';
 import type { CategoryId } from '../types/store';
+
+function isFlashSaleActive(effectiveDate: string | null | undefined): boolean {
+  if (!effectiveDate) return false;
+  const [startText, endText] = effectiveDate.split('/');
+  const start = Date.parse(startText);
+  const end = Date.parse(endText);
+  const now = Date.now();
+  return Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end;
+}
 
 const CATEGORY_ICON_MAP: Record<CategoryId, React.ComponentType<{ className?: string }>> = {
   iphone: Smartphone,
@@ -30,6 +40,14 @@ export const HomePage: React.FC = () => {
   const [heroIndex, setHeroIndex] = useState(0);
 
   const activeSlide = HERO_SLIDES[heroIndex] || HERO_SLIDES[0];
+  const flashSaleProducts = products
+    .filter((product) =>
+      product.custom_label_0?.trim().toLowerCase() === 'flash_sale' &&
+      product.original_price !== undefined &&
+      product.original_price > product.price &&
+      isFlashSaleActive(product.sale_price_effective_date)
+    )
+    .slice(0, 4);
   const latestProducts = [...products]
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
     .slice(0, 4);
@@ -89,6 +107,46 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Flash Sale */}
+      {flashSaleProducts.length > 0 && (
+        <section aria-label="Flash Sale">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-[#FFF0E8] dark:bg-[#3A241B] text-[#E85D24] flex items-center justify-center">
+                <Zap className="w-4 h-4 fill-current" />
+              </span>
+              <div>
+                <h2 className="text-[18px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
+                  Flash Sale
+                </h2>
+                <p className="text-[11px] text-[#6E6E73] dark:text-[#A1A1A6]">
+                  Limited-time offers
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/products?promotion=flash_sale')}
+              className="min-h-[44px] px-1 text-[13px] font-medium text-[#0071E3] dark:text-[#2997FF] inline-flex items-center gap-0.5 whitespace-nowrap"
+            >
+              <span>See all</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {flashSaleProducts.map((product) => (
+              <div key={product.id} className="relative min-w-0">
+                <span className="absolute z-10 top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[#E84135] px-2 py-1 text-[9px] font-bold text-white shadow-sm">
+                  <Zap className="w-3 h-3 fill-current" />
+                  FLASH SALE
+                </span>
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* FeaturedCategories */}
       <section aria-label="Categories">
