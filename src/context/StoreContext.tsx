@@ -358,82 +358,73 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addToCart = useCallback(
     (product: Product, variant: ProductVariant, quantity = 1): boolean => {
-      const maxStock = Math.max(0, variant.stock);
-      if (!product.is_available || maxStock <= 0) {
-        showToast('This configuration is currently out of stock.', 'error');
+      const usedStock = cart
+        .filter((item) => item.productId === product.id)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      const remainingStock = Math.max(0, product.stock - usedStock);
+      if (!product.is_available || remainingStock <= 0) {
+        showToast('This product is currently out of stock or its stock is already in your bag.', 'error');
         return false;
       }
 
+      const safeAdd = Math.min(Math.max(1, quantity), remainingStock);
+      const clamped = safeAdd < quantity;
       const key = `${product.id}::${variant.id}`;
-      let clamped = false;
-      let exceeded = false;
+      const existing = cart.find((item) => item.key === key);
+      const newItem: CartItem = {
+        key,
+        productId: product.id,
+        variantId: variant.id,
+        name: product.name,
+        category: product.category,
+        variantSummary: `${variant.color} · ${variant.size}`,
+        price: variant.price,
+        originalPrice: variant.original_price,
+        quantity: (existing?.quantity || 0) + safeAdd,
+        stock: product.stock,
+        image: variant.image || product.images[0] || '',
+        selected: true,
+      };
 
-      setCart((prev) => {
-        const existing = prev.find((i) => i.key === key);
-        if (existing) {
-          const desired = existing.quantity + quantity;
-          if (existing.quantity >= maxStock) {
-            exceeded = true;
-            return prev;
-          }
-          const nextQty = Math.min(maxStock, Math.max(1, desired));
-          if (desired > maxStock) clamped = true;
-          return prev.map((i) =>
-            i.key === key
-              ? { ...i, quantity: nextQty, stock: maxStock, selected: true }
-              : i
-          );
-        }
-        const initialQty = Math.min(maxStock, Math.max(1, quantity));
-        if (quantity > maxStock) clamped = true;
-        const newItem: CartItem = {
-          key,
-          productId: product.id,
-          variantId: variant.id,
-          name: product.name,
-          category: product.category,
-          variantSummary: `${variant.color} · ${variant.size}`,
-          price: variant.price,
-          originalPrice: variant.original_price,
-          quantity: initialQty,
-          stock: maxStock,
-          image: variant.image || product.images[0],
-          selected: true,
-        };
-        return [newItem, ...prev];
-      });
+      setCart((prev) =>
+        existing
+          ? prev.map((item) => item.key === key ? newItem : item)
+          : [newItem, ...prev]
+      );
 
-      if (exceeded) {
-        showToast(`Maximum available stock (${maxStock}) already in bag.`, 'warning');
-        return false;
-      }
-      if (clamped) {
-        showToast(`Added to bag (capped at ${maxStock} available).`, 'warning');
-      } else {
-        showToast(`${product.name} added to bag.`, 'success');
-      }
+      showToast(
+        clamped
+          ? `Added to bag (capped at ${product.stock} total units for this product).`
+          : `${product.name} added to bag.`,
+        clamped ? 'warning' : 'success'
+      );
       return true;
     },
-    [showToast]
+    [cart, showToast]
   );
 
   const updateCartQuantity = useCallback(
     (key: string, quantity: number) => {
+      const current = cart.find((item) => item.key === key);
+      if (!current) return;
+      const otherProductQuantity = cart
+        .filter((item) => item.productId === current.productId && item.key !== key)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      const maxForLine = Math.max(0, current.stock - otherProductQuantity);
+      if (maxForLine < 1) {
+        setCart((prev) => prev.filter((item) => item.key !== key));
+        showToast('This product no longer has available stock for this cart line.', 'warning');
+        return;
+      }
+      const nextQuantity = Math.min(Math.max(1, quantity), maxForLine);
+      if (nextQuantity < quantity) {
+        showToast(`Only ${maxForLine} total units remain for this product.`, 'warning');
+      }
       setCart((prev) =>
-        prev.map((item) => {
-          if (item.key !== key) return item;
-          if (quantity < 1) {
-            return { ...item, quantity: 1 };
-          }
-          if (quantity > item.stock) {
-            showToast(`Only ${item.stock} units in stock for this item.`, 'warning');
-            return { ...item, quantity: item.stock };
-          }
-          return { ...item, quantity };
-        })
+        prev.map((item) => item.key === key ? { ...item, quantity: nextQuantity } : item)
       );
     },
-    [showToast]
+    [cart, showToast]
   );
 
   const toggleCartItemSelect = useCallback((key: string) => {
@@ -461,7 +452,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const buyNow = useCallback(
     (product: Product, variant: ProductVariant, quantity = 1) => {
-      const maxStock = Math.max(0, variant.stock);
+      const maxStock = Math.max(0, product.stock);
       if (!product.is_available || maxStock <= 0) {
         showToast('This configuration is currently out of stock.', 'error');
         return;
@@ -478,7 +469,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         originalPrice: variant.original_price,
         quantity: safeQty,
         stock: maxStock,
-        image: variant.image || product.images[0],
+        image: variant.image || product.images[0] || '',
         selected: true,
       };
       setCheckout((prev) => ({
