@@ -44,7 +44,7 @@ export const HomePage: React.FC = () => {
   return (
     <div className="px-4 pt-4 pb-6 flex flex-col gap-6">
       {/* HeroBanner */}
-      <section aria-label="Featured showcase" className="relative rounded-[20px] overflow-hidden bg-[#1D1D1F] shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+      <section aria-label="Featured showcase" className="relative -mx-4 -mt-4 rounded-none overflow-hidden bg-[#1D1D1F] shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
         <div className="relative w-full aspect-[16/11] bg-[#1D1D1F]">
           <ResilientImage
             src={activeSlide.image}
