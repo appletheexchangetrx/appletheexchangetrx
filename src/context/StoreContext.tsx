@@ -27,6 +27,8 @@ import {
   formatMYR,
   hashPassword,
   isAuthSession,
+  isCartArray,
+  isCheckoutDraft,
   isOrderArray,
   isStoredAccountArray,
   isThemeMode,
@@ -161,19 +163,40 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   // Product catalog migration: legacy cart snapshots are intentionally discarded.
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const migrated = window.localStorage.getItem(STORAGE_KEYS.CATALOG_MIGRATION) === 'complete';
+        if (!migrated) {
+          window.localStorage.removeItem(STORAGE_KEYS.CART);
+          window.localStorage.removeItem(STORAGE_KEYS.CHECKOUT);
+          window.localStorage.setItem(STORAGE_KEYS.CATALOG_MIGRATION, 'complete');
+          return [];
+        }
+      } catch {
+        // Continue with the validated storage read when browser storage is unavailable.
+      }
+    }
+    return safeReadJSON<CartItem[]>(STORAGE_KEYS.CART, [], isCartArray);
+  });
 
   const [profile, setProfile] = useState<UserProfile>(() =>
     safeReadJSON<UserProfile>(STORAGE_KEYS.PROFILE, DEFAULT_PROFILE, isUserProfile)
   );
 
-  const [checkout, setCheckout] = useState<CheckoutDraft>(() => ({
-    selectedAddressId: DEFAULT_PROFILE.addresses[0]?.id ?? null,
-    shippingMethod: 'standard',
-    shippingFee: FIXED_SHIPPING_FEE,
-    paymentStatus: 'undecided',
-    buyNowItem: null,
-  }));
+  const [checkout, setCheckout] = useState<CheckoutDraft>(() =>
+    safeReadJSON<CheckoutDraft>(
+      STORAGE_KEYS.CHECKOUT,
+      {
+        selectedAddressId: DEFAULT_PROFILE.addresses[0]?.id ?? null,
+        shippingMethod: 'standard',
+        shippingFee: FIXED_SHIPPING_FEE,
+        paymentStatus: 'undecided',
+        buyNowItem: null,
+      },
+      isCheckoutDraft
+    )
+  );
 
   const [orders, setOrders] = useState<Order[]>(() =>
     safeReadJSON<Order[]>(STORAGE_KEYS.ORDERS, INITIAL_ORDERS, isOrderArray)
