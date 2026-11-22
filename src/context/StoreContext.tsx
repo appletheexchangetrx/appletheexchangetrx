@@ -8,6 +8,7 @@ import {
 } from '../data/catalog';
 import type {
   Address,
+  AuthSession,
   CartItem,
   ChatMessage,
   CheckoutDraft,
@@ -16,18 +17,24 @@ import type {
   OrderStatus,
   Product,
   ProductVariant,
+  StoredAccount,
   ThemeMode,
   ToastItem,
   UserProfile,
 } from '../types/store';
 import {
   FIXED_SHIPPING_FEE,
+  formatMalaysiaPhone,
   formatMYR,
+  hashPassword,
+  isAuthSession,
   isCartArray,
   isCheckoutDraft,
   isOrderArray,
+  isStoredAccountArray,
   isThemeMode,
   isUserProfile,
+  normalizePhone,
   safeReadJSON,
   safeWriteJSON,
   STORAGE_KEYS,
@@ -72,7 +79,18 @@ interface StoreContextValue {
   cancelOrder: (orderId: string) => void;
   buyAgainOrder: (order: Order) => void;
 
-  // Profile & Addresses & Wishlist
+  // Auth & Profile & Addresses & Wishlist
+  isAuthenticated: boolean;
+  registerWithPhone: (params: {
+    name: string;
+    phone: string;
+    password: string;
+  }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  loginWithPhone: (params: {
+    phone: string;
+    password: string;
+  }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  logoutAccount: () => void;
   profile: UserProfile;
   updateProfileInfo: (patch: Partial<Pick<UserProfile, 'name' | 'email' | 'phone'>>) => void;
   saveAddress: (address: Omit<Address, 'id'> & { id?: string }) => Address;
@@ -175,6 +193,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     safeReadJSON<ChatMessage[]>(STORAGE_KEYS.CHAT, INITIAL_CHAT_MESSAGES, Array.isArray)
   );
 
+  const [accounts, setAccounts] = useState<StoredAccount[]>(() =>
+    safeReadJSON<StoredAccount[]>(STORAGE_KEYS.ACCOUNTS, [], isStoredAccountArray)
+  );
+
+  const [authSession, setAuthSession] = useState<AuthSession>(() =>
+    safeReadJSON<AuthSession>(
+      STORAGE_KEYS.AUTH,
+      { isAuthenticated: false, accountId: null },
+      isAuthSession
+    )
+  );
+
   const [isSpecialistTyping, setIsSpecialistTyping] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -226,6 +256,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     safeWriteJSON(STORAGE_KEYS.CHAT, chatMessages);
   }, [chatMessages]);
+
+  useEffect(() => {
+    safeWriteJSON(STORAGE_KEYS.ACCOUNTS, accounts);
+  }, [accounts]);
+
+  useEffect(() => {
+    safeWriteJSON(STORAGE_KEYS.AUTH, authSession);
+  }, [authSession]);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -601,25 +639,153 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [addToCart, navigate]
   );
 
+  const registerWithPhone = useCallback(
+    async ({
+      name,
+      phone,
+      password,
+    }: {
+      name: string;
+      phone: string;
+      password: string;
+    }): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const trimmedName = name.trim();
+      const trimmedPhone = phone.trim();
+      const normalized = normalizePhone(trimmedPhone);
+
+      if (!trimmedName) {
+        return { ok: false, error: 'Please enter your full name.' };
+      }
+      if (normalized.length < 9) {
+        return { ok: false, error: 'Please enter a valid phone number.' };
+      }
+      if (password.length < 6) {
+        return { ok: false, error: 'Password must be at least 6 characters.' };
+      }
+
+      if (accounts.some((a) => a.normalizedPhone === normalized)) {
+        return {
+          ok: false,
+          error: 'This phone number is already registered. Please sign in instead.',
+        };
+      }
+
+      const formattedPhone = formatMalaysiaPhone(trimmedPhone);
+      const passwordHash = await hashPassword(password);
+      const newAccount: StoredAccount = {
+        id: `acc-${Date.now()}`,
+        name: trimmedName,
+        phone: formattedPhone,
+        normalizedPhone: normalized,
+        email: '',
+        passwordHash,
+        createdAt: new Date().toISOString(),
+      };
+
+      setAccounts((prev) => [...prev, newAccount]);
+      setAuthSession({ isAuthenticated: true, accountId: newAccount.id });
+      setProfile((prev) => ({
+        ...prev,
+        name: newAccount.name,
+        phone: newAccount.phone,
+        email: newAccount.email,
+        avatarInitials: computeInitials(newAccount.name),
+      }));
+
+      showToast(`Welcome, ${newAccount.name}.`, 'success');
+      return { ok: true };
+    },
+    [accounts, showToast]
+  );
+
+  const loginWithPhone = useCallback(
+    async ({
+      phone,
+      password,
+    }: {
+      phone: string;
+      password: string;
+    }): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const normalized = normalizePhone(phone.trim());
+      if (normalized.length < 9) {
+        return { ok: false, error: 'Please enter a valid phone number.' };
+      }
+      if (!password) {
+        return { ok: false, error: 'Please enter your password.' };
+      }
+
+      const account = accounts.find((a) => a.normalizedPhone === normalized);
+      if (!account) {
+        return { ok: false, error: 'Phone number not registered. Please register first.' };
+      }
+
+      const passwordHash = await hashPassword(password);
+      if (account.passwordHash !== passwordHash) {
+        return { ok: false, error: 'Incorrect password. Please try again.' };
+      }
+
+      setAuthSession({ isAuthenticated: true, accountId: account.id });
+      setProfile((prev) => ({
+        ...prev,
+        name: account.name,
+        phone: account.phone,
+        email: account.email,
+        avatarInitials: computeInitials(account.name),
+      }));
+
+      showToast(`Signed in as ${account.name}.`, 'success');
+      return { ok: true };
+    },
+    [accounts, showToast]
+  );
+
+  const logoutAccount = useCallback(() => {
+    setAuthSession({ isAuthenticated: false, accountId: null });
+    showToast('Signed out.', 'info');
+  }, [showToast]);
+
   const updateProfileInfo = useCallback(
     (patch: Partial<Pick<UserProfile, 'name' | 'email' | 'phone'>>) => {
+      const normalizedPatch = {
+        ...patch,
+        ...(patch.phone !== undefined ? { phone: formatMalaysiaPhone(patch.phone) } : {}),
+      };
       setProfile((prev) => {
-        const nextName = patch.name ?? prev.name;
+        const nextName = normalizedPatch.name ?? prev.name;
         return {
           ...prev,
-          ...patch,
+          ...normalizedPatch,
           avatarInitials: computeInitials(nextName),
         };
       });
+      if (authSession.accountId) {
+        setAccounts((prev) =>
+          prev.map((acc) => {
+            if (acc.id !== authSession.accountId) return acc;
+            const nextPhone = normalizedPatch.phone ?? acc.phone;
+            return {
+              ...acc,
+              name: normalizedPatch.name ?? acc.name,
+              email: normalizedPatch.email ?? acc.email,
+              phone: nextPhone,
+              normalizedPhone: normalizePhone(nextPhone),
+            };
+          })
+        );
+      }
       showToast('Account details updated.', 'success');
     },
-    [showToast]
+    [authSession.accountId, showToast]
   );
 
   const saveAddress = useCallback(
     (addressInput: Omit<Address, 'id'> & { id?: string }): Address => {
       const id = addressInput.id || `addr-${Date.now()}`;
-      const newAddress: Address = { ...addressInput, id };
+      const newAddress: Address = {
+        ...addressInput,
+        phone: formatMalaysiaPhone(addressInput.phone) || addressInput.phone,
+        id,
+      };
 
       setProfile((prev) => {
         let nextAddresses: Address[];
@@ -696,6 +862,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const resetSessionData = useCallback(() => {
+    setAuthSession({ isAuthenticated: false, accountId: null });
     setCart([]);
     setOrders(INITIAL_ORDERS);
     setProfile(DEFAULT_PROFILE);
@@ -708,7 +875,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       paymentStatus: 'undecided',
       buyNowItem: null,
     });
-    showToast('Store session reset to defaults.', 'info');
+    showToast('Signed out and store session reset.', 'info');
   }, [showToast]);
 
   const unreadNotificationCount = useMemo(
@@ -786,6 +953,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       placeOrder,
       cancelOrder,
       buyAgainOrder,
+      isAuthenticated: authSession.isAuthenticated,
+      registerWithPhone,
+      loginWithPhone,
+      logoutAccount,
       profile,
       updateProfileInfo,
       saveAddress,
@@ -832,6 +1003,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       placeOrder,
       cancelOrder,
       buyAgainOrder,
+      authSession.isAuthenticated,
+      registerWithPhone,
+      loginWithPhone,
+      logoutAccount,
       profile,
       updateProfileInfo,
       saveAddress,

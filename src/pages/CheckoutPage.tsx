@@ -10,9 +10,15 @@ import {
 } from 'lucide-react';
 import { StandaloneShell } from '../components/layout/StandaloneShell';
 import { BottomSheet, Modal } from '../components/ui/Overlay';
+import { PhoneInput } from '../components/ui/PhoneInput';
 import { ResilientImage } from '../components/ui/ResilientImage';
 import { useStore } from '../context/StoreContext';
-import { FIXED_SHIPPING_FEE, formatMYR } from '../utils/storage';
+import {
+  FIXED_SHIPPING_FEE,
+  formatMalaysiaPhone,
+  formatMYR,
+  stripMalaysiaPhonePrefix,
+} from '../utils/storage';
 
 export const CheckoutPage: React.FC = () => {
   const {
@@ -34,7 +40,7 @@ export const CheckoutPage: React.FC = () => {
   // Add address form state
   const [label, setLabel] = useState('Home');
   const [recipientName, setRecipientName] = useState(profile.name);
-  const [phone, setPhone] = useState(profile.phone);
+  const [phone, setPhone] = useState(() => stripMalaysiaPhonePrefix(profile.phone));
   const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
   const [city, setCity] = useState('Kuala Lumpur');
@@ -67,14 +73,20 @@ export const CheckoutPage: React.FC = () => {
 
   const handleSaveAddress = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recipientName.trim() || !phone.trim() || !line1.trim() || !city.trim() || !postcode.trim()) {
+    if (
+      !recipientName.trim() ||
+      !stripMalaysiaPhonePrefix(phone).trim() ||
+      !line1.trim() ||
+      !city.trim() ||
+      !postcode.trim()
+    ) {
       setFormError('Please fill in all required Malaysian delivery fields.');
       return;
     }
     saveAddress({
       label: label.trim() || 'Home',
       recipientName: recipientName.trim(),
-      phone: phone.trim(),
+      phone: formatMalaysiaPhone(phone),
       line1: line1.trim(),
       line2: line2.trim() || undefined,
       city: city.trim(),
@@ -418,12 +430,11 @@ export const CheckoutPage: React.FC = () => {
               <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
                 Phone *
               </label>
-              <input
-                type="tel"
+              <PhoneInput
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+60 12-345 6789"
-                className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+                onChange={setPhone}
+                compact
+                placeholder="12-345 6789"
               />
             </div>
           </div>

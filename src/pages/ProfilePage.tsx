@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import {
+  AlertCircle,
   Bell,
   ChevronRight,
   CreditCard,
+  Eye,
+  EyeOff,
   HelpCircle,
   Info,
+  Lock,
   LogOut,
   MapPin,
   Moon,
@@ -13,20 +17,34 @@ import {
   Sun,
   UserRound,
 } from 'lucide-react';
+import { AppleLogoMark } from '../components/layout/AppShell';
 import { Modal } from '../components/ui/Overlay';
+import { PhoneInput } from '../components/ui/PhoneInput';
 import { useStore } from '../context/StoreContext';
 import { STORE_BRAND } from '../data/catalog';
 
 export const ProfilePage: React.FC = () => {
   const {
+    isAuthenticated,
+    loginWithPhone,
+    registerWithPhone,
+    logoutAccount,
     profile,
     orders,
     unreadNotificationCount,
     theme,
     setTheme,
     navigate,
-    resetSessionData,
   } = useStore();
+
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -39,96 +57,299 @@ export const ProfilePage: React.FC = () => {
     completed: orders.filter((o) => o.status === 'completed').length,
   };
 
+  const handleSwitchMode = (mode: 'login' | 'register') => {
+    setAuthMode(mode);
+    setAuthError(null);
+    setPassword('');
+    setConfirmPassword('');
+  };
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (authMode === 'register') {
+      if (password !== confirmPassword) {
+        setAuthError('Passwords do not match.');
+        return;
+      }
+      setSubmitting(true);
+      const res = await registerWithPhone({
+        name: fullName,
+        phone,
+        password,
+      });
+      setSubmitting(false);
+      if (res.ok === false) {
+        setAuthError(res.error);
+      } else {
+        setFullName('');
+        setPhone('');
+        setPassword('');
+        setConfirmPassword('');
+      }
+    } else {
+      setSubmitting(true);
+      const res = await loginWithPhone({ phone, password });
+      setSubmitting(false);
+      if (res.ok === false) {
+        setAuthError(res.error);
+      } else {
+        setPhone('');
+        setPassword('');
+      }
+    }
+  };
+
   return (
     <div className="px-4 pt-4 pb-6 flex flex-col gap-5">
-      {/* ProfileSummary */}
-      <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-4 flex items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <span className="w-14 h-14 rounded-full bg-[#1D1D1F] dark:bg-[#F5F5F7] text-white dark:text-[#1D1D1F] text-[18px] font-bold flex items-center justify-center shrink-0">
-            {profile.avatarInitials}
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-[17px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] truncate">
-              {profile.name}
-            </h1>
-            <p className="text-[13px] text-[#6E6E73] dark:text-[#A1A1A6] truncate">
-              {profile.email}
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('/profile/account')}
-          aria-label="Edit profile"
-          className="w-[44px] h-[44px] rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F5F5F7] flex items-center justify-center shrink-0"
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-      </section>
-
-      {/* OrderShortcut */}
-      <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[15px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
-            My Orders
-          </h2>
-          <button
-            type="button"
-            onClick={() => navigate('/orders')}
-            className="text-[12px] font-semibold text-[#0071E3] dark:text-[#2997FF] inline-flex items-center gap-0.5 min-h-[32px]"
-          >
-            <span>View All</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { id: 'pending', label: 'Pending', count: countByStatus.pending },
-            { id: 'processing', label: 'Processing', count: countByStatus.processing },
-            { id: 'shipped', label: 'Shipped', count: countByStatus.shipped },
-            { id: 'completed', label: 'Completed', count: countByStatus.completed },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => navigate(`/orders?status=${item.id}`)}
-              className="rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 hover:opacity-90 transition-opacity"
-            >
-              <span className="text-[16px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
-                {item.count}
-              </span>
-              <span className="text-[11px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] truncate max-w-full">
-                {item.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* AccountMenu */}
-      <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] overflow-hidden divide-y divide-[#E8E8ED] dark:divide-[#2C2C2E]">
-        {[
-          { label: 'My Account', Icon: UserRound, path: '/profile/account' },
-          { label: 'My Orders', Icon: Package, path: '/orders' },
-          { label: 'My Addresses', Icon: MapPin, path: '/profile/addresses' },
-          { label: 'Payment Methods', Icon: CreditCard, path: '/profile/payment-methods' },
-        ].map(({ label, Icon, path }) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => navigate(path)}
-            className="w-full min-h-[54px] px-4 flex items-center justify-between gap-3 text-left hover:bg-[#F5F5F7]/60 dark:hover:bg-[#2C2C2E]/60 transition-colors"
-          >
-            <span className="flex items-center gap-3 text-[14px] font-medium text-[#1D1D1F] dark:text-[#F5F5F7]">
-              <Icon className="w-5 h-5 text-[#6E6E73] dark:text-[#A1A1A6]" strokeWidth={1.75} />
-              <span>{label}</span>
+      {!isAuthenticated ? (
+        /* Unauthenticated: Phone + Password Login / Register */
+        <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-full bg-[#1D1D1F] dark:bg-[#F5F5F7] text-white dark:text-[#1D1D1F] flex items-center justify-center shrink-0">
+              <AppleLogoMark className="w-5 h-5" />
             </span>
-            <ChevronRight className="w-4 h-4 text-[#86868B]" />
-          </button>
-        ))}
-      </section>
+            <div>
+              <h1 className="text-[18px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7]">
+                {authMode === 'login' ? 'Sign In' : 'Create Account'}
+              </h1>
+              <p className="text-[12px] text-[#6E6E73] dark:text-[#A1A1A6]">
+                {authMode === 'login'
+                  ? 'Sign in with your phone number and password'
+                  : 'Register with your phone number to save orders'}
+              </p>
+            </div>
+          </div>
+
+          {/* Segmented Tabs: Login | Register */}
+          <div
+            role="tablist"
+            aria-label="Authentication mode"
+            className="grid grid-cols-2 gap-1 p-1 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E]"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={authMode === 'login'}
+              onClick={() => handleSwitchMode('login')}
+              className={`h-[40px] rounded-[9px] text-[13px] font-semibold transition-colors ${
+                authMode === 'login'
+                  ? 'bg-white dark:bg-[#1C1C1E] text-[#1D1D1F] dark:text-[#F5F5F7] shadow-sm'
+                  : 'text-[#6E6E73] dark:text-[#A1A1A6]'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={authMode === 'register'}
+              onClick={() => handleSwitchMode('register')}
+              className={`h-[40px] rounded-[9px] text-[13px] font-semibold transition-colors ${
+                authMode === 'register'
+                  ? 'bg-white dark:bg-[#1C1C1E] text-[#1D1D1F] dark:text-[#F5F5F7] shadow-sm'
+                  : 'text-[#6E6E73] dark:text-[#A1A1A6]'
+              }`}
+            >
+              Register
+            </button>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="flex flex-col gap-3">
+            {authMode === 'register' && (
+              <div>
+                <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <UserRound className="w-4 h-4 text-[#86868B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Amirul Hakim"
+                    autoComplete="name"
+                    className="w-full h-[48px] pl-10 pr-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7] placeholder:text-[#86868B] focus:outline-none focus:border-[#0071E3] dark:focus:border-[#2997FF]"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                Phone Number
+              </label>
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                showIcon
+                placeholder="12-345 6789"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-[#86868B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={authMode === 'register' ? 'Minimum 6 characters' : 'Enter password'}
+                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                  className="w-full h-[48px] pl-10 pr-11 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7] placeholder:text-[#86868B] focus:outline-none focus:border-[#0071E3] dark:focus:border-[#2997FF]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-[40px] h-[40px] flex items-center justify-center rounded-lg text-[#6E6E73] dark:text-[#A1A1A6]"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {authMode === 'register' && (
+              <div>
+                <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-[#86868B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    autoComplete="new-password"
+                    className="w-full h-[48px] pl-10 pr-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7] placeholder:text-[#86868B] focus:outline-none focus:border-[#0071E3] dark:focus:border-[#2997FF]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {authError && (
+              <div
+                role="alert"
+                className="rounded-[10px] bg-[#D70015]/10 dark:bg-[#FF453A]/15 border border-[#D70015]/30 p-2.5 flex items-center gap-2 text-[12px] font-medium text-[#D70015] dark:text-[#FF453A]"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-1 w-full h-[48px] rounded-[12px] bg-[#0071E3] hover:bg-[#0077ED] dark:bg-[#2997FF] dark:hover:bg-[#47A7FF] text-white text-[14px] font-semibold disabled:opacity-50 transition-colors"
+            >
+              {submitting
+                ? 'Please wait...'
+                : authMode === 'login'
+                ? 'Sign In'
+                : 'Register Account'}
+            </button>
+          </form>
+        </section>
+      ) : (
+        <>
+          {/* ProfileSummary */}
+          <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-4 flex items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <span className="w-14 h-14 rounded-full bg-[#1D1D1F] dark:bg-[#F5F5F7] text-white dark:text-[#1D1D1F] text-[18px] font-bold flex items-center justify-center shrink-0">
+                {profile.avatarInitials}
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-[17px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] truncate">
+                  {profile.name}
+                </h1>
+                <p className="text-[13px] text-[#6E6E73] dark:text-[#A1A1A6] truncate tabular-nums">
+                  {profile.phone}
+                </p>
+                {profile.email && (
+                  <p className="text-[12px] text-[#86868B] truncate">{profile.email}</p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/profile/account')}
+              aria-label="Edit profile"
+              className="w-[44px] h-[44px] rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#1D1D1F] dark:text-[#F5F5F7] flex items-center justify-center shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </section>
+
+          {/* OrderShortcut */}
+          <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[15px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
+                My Orders
+              </h2>
+              <button
+                type="button"
+                onClick={() => navigate('/orders')}
+                className="text-[12px] font-semibold text-[#0071E3] dark:text-[#2997FF] inline-flex items-center gap-0.5 min-h-[32px]"
+              >
+                <span>View All</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'pending', label: 'Pending', count: countByStatus.pending },
+                { id: 'processing', label: 'Processing', count: countByStatus.processing },
+                { id: 'shipped', label: 'Shipped', count: countByStatus.shipped },
+                { id: 'completed', label: 'Completed', count: countByStatus.completed },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigate(`/orders?status=${item.id}`)}
+                  className="rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 hover:opacity-90 transition-opacity"
+                >
+                  <span className="text-[16px] font-bold text-[#1D1D1F] dark:text-[#F5F5F7] tabular-nums">
+                    {item.count}
+                  </span>
+                  <span className="text-[11px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] truncate max-w-full">
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* AccountMenu */}
+          <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] overflow-hidden divide-y divide-[#E8E8ED] dark:divide-[#2C2C2E]">
+            {[
+              { label: 'My Account', Icon: UserRound, path: '/profile/account' },
+              { label: 'My Orders', Icon: Package, path: '/orders' },
+              { label: 'My Addresses', Icon: MapPin, path: '/profile/addresses' },
+              { label: 'Payment Methods', Icon: CreditCard, path: '/profile/payment-methods' },
+            ].map(({ label, Icon, path }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => navigate(path)}
+                className="w-full min-h-[54px] px-4 flex items-center justify-between gap-3 text-left hover:bg-[#F5F5F7]/60 dark:hover:bg-[#2C2C2E]/60 transition-colors"
+              >
+                <span className="flex items-center gap-3 text-[14px] font-medium text-[#1D1D1F] dark:text-[#F5F5F7]">
+                  <Icon className="w-5 h-5 text-[#6E6E73] dark:text-[#A1A1A6]" strokeWidth={1.75} />
+                  <span>{label}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-[#86868B]" />
+              </button>
+            ))}
+          </section>
+        </>
+      )}
 
       {/* SupportMenu */}
       <section className="rounded-[16px] bg-white dark:bg-[#1C1C1E] border border-[#E8E8ED] dark:border-[#2C2C2E] overflow-hidden divide-y divide-[#E8E8ED] dark:divide-[#2C2C2E]">
@@ -222,14 +443,16 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setSignOutOpen(true)}
-          className="mt-1 w-full h-[46px] rounded-[12px] border border-[#D70015]/30 dark:border-[#FF453A]/30 text-[#D70015] dark:text-[#FF453A] text-[14px] font-semibold inline-flex items-center justify-center gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
-        </button>
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => setSignOutOpen(true)}
+            className="mt-1 w-full h-[46px] rounded-[12px] border border-[#D70015]/30 dark:border-[#FF453A]/30 text-[#D70015] dark:text-[#FF453A] text-[14px] font-semibold inline-flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </button>
+        )}
       </section>
 
       {/* Help Center Modal */}
@@ -276,12 +499,11 @@ export const ProfilePage: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Sign Out / Reset Confirmation */}
-      <Modal open={signOutOpen} onClose={() => setSignOutOpen(false)} title="Reset Store Session?">
+      {/* Sign Out Confirmation */}
+      <Modal open={signOutOpen} onClose={() => setSignOutOpen(false)} title="Sign Out?">
         <div className="flex flex-col gap-4">
           <p className="text-[14px] text-[#6E6E73] dark:text-[#A1A1A6]">
-            Signing out will reset your shopping bag, saved addresses, and local order history back to
-            the initial store state.
+            You can sign back in anytime using your registered phone number and password.
           </p>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -294,12 +516,12 @@ export const ProfilePage: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                resetSessionData();
+                logoutAccount();
                 setSignOutOpen(false);
               }}
               className="h-[46px] rounded-[12px] bg-[#D70015] dark:bg-[#FF453A] text-white text-[14px] font-semibold"
             >
-              Reset & Sign Out
+              Sign Out
             </button>
           </div>
         </div>

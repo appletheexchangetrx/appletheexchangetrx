@@ -162,3 +162,18 @@ export interface ToastItem {
   variant: 'success' | 'error' | 'warning' | 'info';
   message: string;
 }
+
+export interface StoredAccount {
+  id: string;
+  name: string;
+  phone: string;
+  normalizedPhone: string;
+  email: string;
+  passwordHash: string;
+  createdAt: string;
+}
+
+export interface AuthSession {
+  isAuthenticated: boolean;
+  accountId: string | null;
+}

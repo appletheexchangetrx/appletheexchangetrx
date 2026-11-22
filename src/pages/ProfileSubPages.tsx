@@ -2,24 +2,49 @@ import React, { useState } from 'react';
 import { Check, CreditCard, MapPin, Plus, Trash2 } from 'lucide-react';
 import { StandaloneShell } from '../components/layout/StandaloneShell';
 import { Modal } from '../components/ui/Overlay';
+import { PhoneInput } from '../components/ui/PhoneInput';
 import { useStore } from '../context/StoreContext';
+import { formatMalaysiaPhone, stripMalaysiaPhonePrefix } from '../utils/storage';
 
 export const AccountPage: React.FC = () => {
-  const { profile, updateProfileInfo, showToast } = useStore();
+  const { isAuthenticated, profile, updateProfileInfo, navigate, showToast } = useStore();
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
-  const [phone, setPhone] = useState(profile.phone);
+  const [phone, setPhone] = useState(() => stripMalaysiaPhonePrefix(profile.phone));
+
+  if (!isAuthenticated) {
+    return (
+      <StandaloneShell title="My Account" backFallback="/profile">
+        <div className="px-4 py-12 text-center flex flex-col items-center gap-4">
+          <h2 className="text-[17px] font-semibold text-[#1D1D1F] dark:text-[#F5F5F7]">
+            Sign in required
+          </h2>
+          <p className="text-[13px] text-[#6E6E73] dark:text-[#A1A1A6] max-w-[280px]">
+            Please sign in or register with your phone number and password to edit account details.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="h-[48px] px-6 rounded-[12px] bg-[#0071E3] dark:bg-[#2997FF] text-white text-[14px] font-semibold"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </StandaloneShell>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      showToast('Name and email are required.', 'error');
+    const cleanedDigits = stripMalaysiaPhonePrefix(phone).replace(/\D/g, '');
+    if (!name.trim() || cleanedDigits.length < 7) {
+      showToast('Full name and a valid phone number are required.', 'error');
       return;
     }
     updateProfileInfo({
       name: name.trim(),
       email: email.trim(),
-      phone: phone.trim(),
+      phone: formatMalaysiaPhone(phone),
     });
   };
 
@@ -41,24 +66,25 @@ export const AccountPage: React.FC = () => {
 
           <div>
             <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-              Email Address
+              Phone Number
             </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-[48px] px-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
+            <PhoneInput
+              value={phone}
+              onChange={setPhone}
+              showIcon
+              placeholder="12-345 6789"
             />
           </div>
 
           <div>
             <label className="block text-[12px] font-medium text-[#6E6E73] dark:text-[#A1A1A6] mb-1">
-              Mobile Number
+              Email Address (Optional)
             </label>
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
               className="w-full h-[48px] px-3.5 rounded-[12px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px] text-[#1D1D1F] dark:text-[#F5F5F7]"
             />
           </div>
@@ -81,7 +107,7 @@ export const AddressesPage: React.FC = () => {
 
   const [label, setLabel] = useState('Home');
   const [recipientName, setRecipientName] = useState(profile.name);
-  const [phone, setPhone] = useState(profile.phone);
+  const [phone, setPhone] = useState(() => stripMalaysiaPhonePrefix(profile.phone));
   const [line1, setLine1] = useState('');
   const [city, setCity] = useState('Kuala Lumpur');
   const [stateName, setStateName] = useState('Wilayah Persekutuan Kuala Lumpur');
@@ -90,14 +116,14 @@ export const AddressesPage: React.FC = () => {
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recipientName.trim() || !phone.trim() || !line1.trim() || !postcode.trim()) {
+    if (!recipientName.trim() || !stripMalaysiaPhonePrefix(phone).trim() || !line1.trim() || !postcode.trim()) {
       setError('Please complete all required address fields.');
       return;
     }
     saveAddress({
       label: label.trim() || 'Home',
       recipientName: recipientName.trim(),
-      phone: phone.trim(),
+      phone: formatMalaysiaPhone(phone),
       line1: line1.trim(),
       city: city.trim(),
       state: stateName.trim(),
@@ -206,12 +232,11 @@ export const AddressesPage: React.FC = () => {
             placeholder="Recipient Name"
             className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px]"
           />
-          <input
-            type="tel"
+          <PhoneInput
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone"
-            className="w-full h-[44px] px-3 rounded-[10px] bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[14px]"
+            onChange={setPhone}
+            compact
+            placeholder="12-345 6789"
           />
           <input
             type="text"
