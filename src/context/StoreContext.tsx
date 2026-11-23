@@ -455,7 +455,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       const nextQuantity = Math.min(Math.max(1, quantity), maxForLine);
       if (nextQuantity < quantity) {
-        showToast(`Only ${maxForLine} total units remain for this product.`, 'warning');
+        showToast(`Only ${maxForLine} units remain for this variant.`, 'warning');
       }
       setCart((prev) =>
         prev.map((item) => item.key === key ? { ...item, quantity: nextQuantity } : item)
