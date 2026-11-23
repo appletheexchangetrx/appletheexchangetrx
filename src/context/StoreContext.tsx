@@ -396,9 +396,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addToCart = useCallback(
     (product: Product, variant: ProductVariant, quantity = 1): boolean => {
       const usedStock = cart
-        .filter((item) => item.productId === product.id)
+        .filter((item) => item.productId === product.id && item.variantId === variant.id)
         .reduce((sum, item) => sum + item.quantity, 0);
-      const remainingStock = Math.max(0, product.stock - usedStock);
+      const remainingStock = Math.max(0, variant.stock - usedStock);
       if (!product.is_available || remainingStock <= 0) {
         showToast('This product is currently out of stock or its stock is already in your bag.', 'error');
         return false;
@@ -418,7 +418,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         price: variant.price,
         originalPrice: variant.original_price,
         quantity: (existing?.quantity || 0) + safeAdd,
-        stock: product.stock,
+        stock: variant.stock,
         image: variant.image || product.images[0] || '',
         selected: true,
       };
@@ -431,7 +431,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       showToast(
         clamped
-          ? `Added to bag (capped at ${product.stock} total units for this product).`
+          ? `Added to bag (capped at ${variant.stock} units for this variant).`
           : `${product.name} added to bag.`,
         clamped ? 'warning' : 'success'
       );
@@ -444,10 +444,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (key: string, quantity: number) => {
       const current = cart.find((item) => item.key === key);
       if (!current) return;
-      const otherProductQuantity = cart
-        .filter((item) => item.productId === current.productId && item.key !== key)
+      const otherVariantQuantity = cart
+        .filter((item) => item.productId === current.productId && item.variantId === current.variantId && item.key !== key)
         .reduce((sum, item) => sum + item.quantity, 0);
-      const maxForLine = Math.max(0, current.stock - otherProductQuantity);
+      const maxForLine = Math.max(0, current.stock - otherVariantQuantity);
       if (maxForLine < 1) {
         setCart((prev) => prev.filter((item) => item.key !== key));
         showToast('This product no longer has available stock for this cart line.', 'warning');
@@ -489,7 +489,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const buyNow = useCallback(
     (product: Product, variant: ProductVariant, quantity = 1) => {
-      const maxStock = Math.max(0, product.stock);
+      const maxStock = Math.max(0, variant.stock);
       if (!product.is_available || maxStock <= 0) {
         showToast('This configuration is currently out of stock.', 'error');
         return;
@@ -505,7 +505,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         price: variant.price,
         originalPrice: variant.original_price,
         quantity: safeQty,
-        stock: maxStock,
+        stock: variant.stock,
         image: variant.image || product.images[0] || '',
         selected: true,
       };
@@ -546,8 +546,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!liveProduct || !liveVariant) {
         return { ok: false, error: 'A product or variant in your bag is no longer available. Please review your bag.' };
       }
-      if (!liveProduct.is_available || liveProduct.stock <= 0) {
-        return { ok: false, error: `${liveProduct.name} is currently unavailable.` };
+      if (!liveProduct.is_available || liveVariant.stock <= 0) {
+        return { ok: false, error: `${liveProduct.name} (${liveVariant.color} · ${liveVariant.size}) is currently unavailable.` };
+      }
+      if (item.quantity > liveVariant.stock) {
+        return { ok: false, error: `${liveProduct.name} (${liveVariant.color} · ${liveVariant.size}) has only ${liveVariant.stock} units available.` };
       }
       itemsToOrder.push({
         ...item,
@@ -556,24 +559,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         variantSummary: `${liveVariant.color} · ${liveVariant.size}`,
         price: liveVariant.price,
         originalPrice: liveVariant.original_price,
-        stock: liveProduct.stock,
+        stock: liveVariant.stock,
         image: liveVariant.image || liveProduct.images[0] || '',
       });
     }
 
-    const quantitiesByProduct = new Map<string, number>();
+    const quantitiesByVariant = new Map<string, number>();
     itemsToOrder.forEach((item) => {
-      quantitiesByProduct.set(
-        item.productId,
-        (quantitiesByProduct.get(item.productId) || 0) + item.quantity
-      );
+      const key = `${item.productId}::${item.variantId}`;
+      quantitiesByVariant.set(key, (quantitiesByVariant.get(key) || 0) + item.quantity);
     });
-    for (const [productId, quantity] of quantitiesByProduct) {
+    for (const [variantKey, quantity] of quantitiesByVariant) {
+      const [productId, variantId] = variantKey.split('::');
       const product = liveCatalog.find((item) => item.id === productId);
-      if (!product || quantity > product.stock) {
+      const variant = product?.variants.find((item) => item.id === variantId);
+      if (!product || !variant || quantity > variant.stock) {
         return {
           ok: false,
-          error: `${product?.name || 'A product'} has only ${product?.stock ?? 0} units available across all variants. Please update your bag.`,
+          error: `${product?.name || 'A product'} has only ${variant?.stock ?? 0} units available for this variant. Please update your bag.`,
         };
       }
     }
