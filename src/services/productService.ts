@@ -9,6 +9,7 @@ interface RawVariant {
   sale_price?: string | number | null;
   image_link?: string | null;
   additional_image_link?: string | string[] | null;
+  quantity_to_sell_on_facebook?: string | number | null;
 }
 
 interface RawProduct {
@@ -21,7 +22,6 @@ interface RawProduct {
   rich_text_description?: string | null;
   availability?: string | null;
   condition?: string | null;
-  quantity_to_sell_on_facebook?: string | number | null;
   created_at?: string | null;
   updated_at?: string | null;
   custom_label_0?: string | null;
@@ -140,6 +140,7 @@ function mapProduct(raw: RawProduct): Product {
           salePrice !== undefined && salePrice < regularPrice ? regularPrice : undefined,
         image,
         images,
+        stock: toNumber(item.quantity_to_sell_on_facebook),
       };
     })
     .filter((variant) => variant.id.length > 0);
@@ -163,13 +164,7 @@ function mapProduct(raw: RawProduct): Product {
     availability === 'in stock' ||
     availability === 'preorder' ||
     availability === 'available for order';
-  const rawStock = raw.quantity_to_sell_on_facebook;
-  const stock =
-    rawStock === null || rawStock === undefined || rawStock === ''
-      ? isOrderableStatus
-        ? 20
-        : 0
-      : toNumber(rawStock);
+  const stock = variants.reduce((sum, variant) => sum + variant.stock, 0);
 
   const productType = raw.product_type?.trim() || '';
   const googleCategory = raw.google_product_category?.trim() || '';
